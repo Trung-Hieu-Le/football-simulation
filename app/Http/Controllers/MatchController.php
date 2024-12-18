@@ -7,23 +7,35 @@ use Illuminate\Support\Facades\DB;
 
 class MatchController extends Controller
 {
-    public function simulateMatch($matchId)
+    public function simulateMatch(Request $request)
     {
-        // Lấy trận đấu
-        $match = DB::table('matches')->where('id', $matchId)->first();
+        $season_id = $request->input('season_id');
+        $nextMatches = DB::table('matches')
+            ->where('season_id', $season_id)
+            ->whereNull('team1_score')
+            ->whereNull('team2_score')
+            ->limit(8)
+            ->get();
+        foreach ($nextMatches as $match) {
+            // Tạo kết quả ngẫu nhiên cho trận đấu
+            $team1_score = rand(0, 5); // Số bàn thắng ngẫu nhiên từ 0 đến 5
+            $team2_score = rand(0, 5);
 
-        $team1Goals = rand(0, 5); // Giả lập số bàn thắng đội 1
-        $team2Goals = rand(0, 5); // Giả lập số bàn thắng đội 2
+            // Cập nhật kết quả trận đấu
+            DB::table('matches')
+                ->where('id', $match->id)
+                ->update([
+                    'team1_score' => $team1_score,
+                    'team2_score' => $team2_score,
+                    'updated_at' => now(),
+                ]);
 
-        DB::table('matches')->where('id', $matchId)->update([
-            'team1_score' => $team1Goals,
-            'team2_score' => $team2Goals,
-            'updated_at' => now(),
-        ]);
+            $this->updateHistory($match->team1_id, $match->season_id, $team1_score, $team2_score);
+            $this->updateHistory($match->team2_id, $match->season_id, $team2_score, $team1_score);
+            $this->updateStandings($match->season_id);
+        }
+        return redirect()->back()->with('success', 'Next matches simulated successfully!');
 
-        $this->updateHistory($match->team1_id, $match->season_id, $team1Goals, $team2Goals);
-        $this->updateHistory($match->team2_id, $match->season_id, $team2Goals, $team1Goals);
-        $this->updateStandings($match->season_id);
     }
 
     private function updateHistory($teamId, $seasonId, $goalsScored, $goalsConceded)
@@ -60,34 +72,37 @@ class MatchController extends Controller
             ]
         );
     }
+
     private function updateStandings($season_id)
-    {
-        // Lấy tất cả lịch sử của các đội trong mùa giải, nhóm theo bảng
-        $teamsHistory = DB::table('histories')
-            ->where('season_id', $season_id)
-            ->get()
-            ->groupBy('group');  // Giả sử 'group' là trường xác định bảng của đội
+{
+    // Lấy lịch sử của các đội trong mùa giải
+    $teamsHistory = DB::table('histories')
+        ->join('teams', 'histories.team_id', '=', 'teams.id')
+        ->where('histories.season_id', $season_id)
+        ->select(
+            'histories.*',
+            DB::raw('COALESCE(teams.form, 0) as team_form') // Chuẩn hóa form
+        )
+        ->get()
+        ->groupBy('group'); // Nhóm theo bảng
 
-        // Lặp qua các bảng và sắp xếp đội trong mỗi bảng riêng biệt
-        foreach ($teamsHistory as $group => $groupTeams) {
-            // Sắp xếp các đội trong bảng theo điểm số, hiệu số bàn thắng, bàn thắng, phong độ, và ID đội
-            $sortedTeams = $groupTeams->sort(function ($a, $b) {
-                return $b->points <=> $a->points
-                    ?: $b->goal_difference <=> $a->goal_difference // So sánh hiệu số bàn thắng
-                    ?: $b->goal_scored <=> $a->goal_scored // So sánh số bàn thắng
-                    ?: strcmp(implode('', array_reverse($b->form)), implode('', array_reverse($a->form))) // So sánh phong độ
-                    ?: $a->team_id <=> $b->team_id; // Nếu vẫn bằng nhau, sắp xếp theo ID đội
-            });
+    // Lặp qua từng bảng
+    foreach ($teamsHistory as $group => $groupTeams) {
+        // Sắp xếp các đội trong bảng
+        $sortedTeams = $groupTeams->sortByDesc(function ($team) {
+            return [$team->points, $team->goal_difference, $team->goal_scored, $team->team_form];
+        })->values(); // Đặt lại khóa để đảm bảo tuần tự
 
-            // Cập nhật vị trí cho các đội trong bảng
-            foreach ($sortedTeams as $index => $team) {
-                DB::table('histories')->where('team_id', $team->team_id)
-                    ->where('season_id', $season_id)
-                    ->where('group', $group)  // Đảm bảo chỉ cập nhật cho đội trong bảng này
-                    ->update(['position' => $index + 1]);
-            }
+        // Cập nhật vị trí
+        foreach ($sortedTeams as $index => $team) {
+            DB::table('histories')
+                ->where('team_id', $team->team_id)
+                ->where('season_id', $season_id)
+                ->where('group', $group)
+                ->update(['position' => $index + 1]);
         }
     }
+}
 
 
 

@@ -7,218 +7,218 @@ use Illuminate\Support\Facades\DB;
 
 class SeasonController extends Controller
 {
+    // Danh sách seasons
     public function index()
     {
         $seasons = DB::table('seasons')->get();
         return view('seasons.index', compact('seasons'));
     }
-    // Tạo mùa giải mới
+
+    // Xóa season
+    public function destroy($id)
+    {
+
+        DB::table('histories')->where('season_id', $id)->delete();
+        DB::table('matches')->where('season_id', $id)->delete();
+        DB::table('team_groups')->where('season_id', $id)->delete();
+        DB::table('seasons')->where('id', $id)->delete();
+        return redirect()->route('seasons.index')->with('success', 'Season deleted successfully.');
+    }
+
+    // Hiển thị form tạo mới
     public function create()
     {
         return view('seasons.create');
     }
 
-    public function store(Request $request)
+
+    // Hiển thị chi tiết season
+    public function show($id)
     {
-        $lastSeason = DB::table('seasons')->max('season') ?? 0;
+        $season = DB::table('seasons')->where('id', $id)->first();
 
-        // Tự động thêm mùa giải mới với season tăng +1
-        DB::table('seasons')->insert([
-            'season' => $lastSeason + 1,
-            'created_at' => now(),
-        ]);
-        return redirect()->route('seasons.index')->with('success', 'Mùa giải đã được thêm!');
-    }
+        // Lấy thông tin bảng xếp hạng từ histories
+        $groupStandings = DB::table('histories')
+            ->select('histories.*', 'teams.name as team_name')
+            ->join('teams', 'teams.id', 'histories.team_id')
+            ->where('season_id', $id)
+            ->orderBy('position', 'asc')
+            ->get()
+            ->groupBy('tier');
 
-    // Xóa mùa giải
-    public function destroy($id)
-    {
-        DB::table('team_groups')->where('season_id', $id)->delete();
-        DB::table('matches')->where('season_id', $id)->delete();
-        DB::table('histories')->where('season_id', $id)->delete();
-        DB::table('seasons')->where('id', $id)->delete();
-        return redirect()->route('seasons.index');
-    }
-
-    //TODO: đếm xem đủ 64 team không, đã chia bảng chưa
-    public function groupStage($season_id)
-    {
-        $existingGroupsCount = DB::table('team_groups')
-            ->where('season_id', $season_id)
-            ->count();
-
-        if ($existingGroupsCount != 8) {
-            DB::table('team_groups')->where('season_id', $season_id)->delete();
-            $teams = DB::table('teams')->orderBy('form', 'desc')->orderBy('id')->get();
-            $groupsData = array_fill(0, 8, []);
-            foreach ($teams as $team) {
-                $groupIndex = $this->findGroupForTeam($groupsData, $team);
-                $groupsData[$groupIndex][] = $team;
-            }
-
-            foreach ($groupsData as $index => $group) {
-                $teamIds = collect($group)->pluck('id')->toArray();
-                $groupName = chr(65 + $index);
-                DB::table('team_groups')->insert([
-                    'season_id' => $season_id,
-                    'group_name' => $groupName,
-                    'team_ids' => json_encode($teamIds),
-                    'created_at' => now(),
-                ]);
-                $this->createInitialHistories($season_id, $teamIds, $groupName);
-            }
-
-
-
-            return redirect()->back()->with('success', 'Đã chia bảng lại từ đầu!');
-        }
-
-        return redirect()->back()->with('error', 'Mùa giải này đã có đủ 8 bảng!');
-    }
-
-
-    private function findGroupForTeam(&$groupsData, $team)
-    {
-        $availableGroups = [];
-
-        foreach ($groupsData as $index => $group) {
-            if (count($group) >= 8) {
-                continue;
-            }
-
-            $regionCount = collect($group)->where('region', $team->region)->count();
-            $teamCount = count($group);
-            if ($regionCount < 5) {
-                $availableGroups[] = ['index' => $index, 'regionCount' => $regionCount, 'teamCount' => $teamCount];
-            }
-        }
-
-        if (!empty($availableGroups)) {
-            usort($availableGroups, function ($a, $b) {
-                return $a['regionCount'] <=> $b['regionCount'] ?: $a['teamCount'] <=> $b['teamCount'];
-            });
-
-            return $availableGroups[0]['index'];
-        }
-
-        $leastPopulatedGroup = collect($groupsData)
-            ->map(fn($group, $index) => ['index' => $index, 'count' => count($group)])
-            ->filter(fn($group) => $group['count'] < 8)
-            ->sortBy('count')
-            ->first();
-
-        return $leastPopulatedGroup['index'];
-    }
-
-    public function generateSchedule($season_id)
-    {
-        $groups = DB::table('team_groups')
-            ->where('season_id', $season_id)
-            ->select('group_name', 'team_ids')
+        // Lấy thông tin các trận đấu đã xảy ra và sắp tới
+        $completedMatches = DB::table('matches')
+            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
+            ->where('matches.team1_score', '!=', null)
+            ->where('matches.team2_score', '!=', null)
+            ->where('matches.season_id', $id)
+            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
             ->get();
 
-        $groupMatches = [];
+        // Lọc các trận đấu sắp tới
+        $nextMatches = DB::table('matches')
+            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
+            ->where(function ($query) {
+                $query->whereNull('matches.team1_score')
+                    ->orWhereNull('matches.team2_score');
+            })
+            ->where('matches.season_id', $id)
+            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
+            ->get();
 
-        foreach ($groups as $index => $group) {
-            $team_ids = json_decode($group->team_ids);
-            if (($index + 1) % 2 == 0) {
-                $team_ids = array_reverse($team_ids);
-            }
 
-            $groupMatches[$group->group_name] = $this->generateGroupMatches($season_id, $team_ids);
-        }
-
-        $schedule = [];
-        $maxRounds = max(array_map('count', $groupMatches));
-        for ($round = 0; $round < $maxRounds; $round++) {
-            foreach ($groupMatches as $matches) {
-                if (isset($matches[$round])) {
-                    $schedule[] = $matches[$round];
-                }
-            }
-        }
-        // dd($schedule);
-        foreach ($schedule as $match) {
-            DB::table('matches')->insert($match);
-        }
-
-        return redirect()->back()->with('success', 'Lịch đấu vòng bảng đã được tạo thành công!');
+        return view('seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches'));
     }
 
-    private function generateGroupMatches($season_id, $team_ids)
+    // Lưu season và phân chia teams
+    public function store(Request $request)
     {
-        $numTeams = count($team_ids);
-
-        if ($numTeams % 2 !== 0) {
-            $team_ids[] = null; // null đại diện cho "bye"
-            $numTeams++;
+        if ($request->teams_count % 12 !== 0) {
+            return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 12.']);
         }
 
-        $rounds = $numTeams - 1; // Số vòng đấu
+        $seasonId = DB::table('seasons')->insertGetId([
+            'season' => $request->season,
+            'teams_count' => $request->teams_count
+        ]);
+
+        $this->assignTeamsToTiers($seasonId, $request->teams_count);
+        $this->createHistories($seasonId, $request->teams_count);
+        $this->createMatches($seasonId);
+
+        return redirect()->route('seasons.index')->with('success', 'Season created successfully.');
+    }
+
+    // Phân chia teams thành tiers
+    private function assignTeamsToTiers($seasonId, $teamsCount)
+    {
+        $teams = DB::table('teams')->orderBy('id')->take($teamsCount)->get();
+
+        $teamsPerTier = $teamsCount / 3;
+        $upDownCount = $teamsPerTier / 4; // Số đội lên/xuống hạng
+
+        $tiers = [
+            'tier1' => $teams->slice(0, $teamsPerTier),
+            'tier2' => $teams->slice($teamsPerTier, $teamsPerTier),
+            'tier3' => $teams->slice($teamsPerTier * 2, $teamsPerTier),
+        ];
+
+        foreach ($tiers as $tierName => $tierTeams) {
+            DB::table('team_groups')->updateOrInsert([
+                'season_id' => $seasonId,
+                'tier' => $tierName,
+                'team_ids' => $tierTeams->pluck('id')->implode(','),
+                'created_at' => now(),
+            ]);
+        }
+    }
+
+    // Tạo histories cho từng đội
+    private function createHistories($seasonId, $teamsCount)
+    {
+        $teams = DB::table('teams')->orderBy('id')->take($teamsCount)->get();
+
+        foreach ($teams as $team) {
+            DB::table('histories')->insert([
+                'season_id' => $seasonId,
+                'team_id' => $team->id,
+                'tier' => $this->getTeamTier($team->id, $seasonId),
+                'match_played' => 0,
+                'goal_scored' => 0,
+                'goal_conceded' => 0,
+                'goal_difference' => 0,
+                'points' => 0,
+                'position' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function getTeamTier($teamId, $seasonId)
+    {
+        $group = DB::table('team_groups')
+            ->where('season_id', $seasonId)
+            ->whereRaw("FIND_IN_SET($teamId, team_ids) > 0")
+            ->first();
+
+        return $group ? $group->tier : 'tier1';
+    }
+
+    // Tạo lịch thi đấu Round Robin
+    private function createMatches($seasonId)
+    {
+        // Lấy tất cả các nhóm (tier) trong mùa giải
+        $teamGroups = DB::table('team_groups')->where('season_id', $seasonId)->get();
+
+        // Khởi tạo mảng chứa các trận đấu
         $matches = [];
 
-        for ($round = 0; $round < $rounds; $round++) {
-            for ($i = 0; $i < $numTeams / 2; $i++) {
-                $team1 = $team_ids[$i];
-                $team2 = $team_ids[$numTeams - 1 - $i];
+        // Duyệt qua từng nhóm (tier) và xử lý theo tier
+        foreach ($teamGroups as $group) {
+            $teamIds = explode(',', $group->team_ids);
 
-                if ($team1 !== null && $team2 !== null) {
-                    $matches[] = [
-                        'season_id' => $season_id,
-                        'round' => 'group_stage',
-                        'team1_id' => $team1,
-                        'team2_id' => $team2,
-                        'team1_score' => null,
-                        'team2_score' => null,
-                        'created_at' => now(),
-                    ];
-                }
-            }
-            $rotated = [$team_ids[0]];
-            for ($j = 1; $j < $numTeams; $j++) {
-                $rotated[] = $team_ids[($j - 1 + $numTeams - 1) % ($numTeams - 1) + 1];
-            }
-            $team_ids = $rotated;
+            // Đảo ngược thứ tự đội trong nhóm (tier)
+            $teamIds = array_reverse($teamIds);
+            // Tạo lịch thi đấu Round Robin cho mỗi nhóm đội
+            $groupMatches = $this->generateGroupMatches($seasonId, $teamIds, $group->tier);
+            // dd($groupMatches);
+            // Thêm các trận đấu vào mảng matches
+            $matches = array_merge($matches, $groupMatches);
         }
 
-        return $matches;
+        // Chèn tất cả các trận đấu vào bảng 'matches'
+        DB::table('matches')->insert($matches);
     }
 
-    //TODO: check
-    private function createInitialHistories($season_id, $team_ids, $groupName)
-    {
-        // Kiểm tra và xóa lịch sử của các đội bóng cho mùa giải này nếu có
-        DB::table('histories')->where('season_id', $season_id)->delete();
-        
-        // Chỉ tạo lịch sử nếu có đủ 64 đội
-        if (count($team_ids) == 8) {
-            foreach ($team_ids as $team_id) {
-                DB::table('histories')->insert([
-                    'team_id' => $team_id,
+
+    private function generateGroupMatches($season_id, $team_ids, $group_name)
+{
+    $numTeams = count($team_ids);
+
+    if ($numTeams % 2 !== 0) {
+        $team_ids[] = null; // null đại diện cho "bye"
+        $numTeams++;
+    }
+
+    $rounds = $numTeams - 1; // Số vòng đấu
+    $matches = [];
+
+    // Tạo các trận đấu theo vòng
+    for ($round = 0; $round < $rounds; $round++) {
+        for ($i = 0; $i < $numTeams / 2; $i++) {
+            $team1 = $team_ids[$i];
+            $team2 = $team_ids[$numTeams - 1 - $i];
+
+            // Kiểm tra và tạo trận đấu nếu không phải "bye"
+            if ($team1 !== null && $team2 !== null) {
+                $matches[] = [
                     'season_id' => $season_id,
-                    'group' => $groupName,
-                    'match_played' => 0,
-                    'goal_scored' => 0,
-                    'goal_conceded' => 0,
-                    'goal_difference' => 0,
-                    'position' => 0, // Vị trí sẽ được cập nhật sau khi giả lập các trận
-                    'tier' => 'group_stage', // Hoặc các cấp khác nếu có
+                    'tier' => $group_name,
+                    'round' => $round + 1,  // Số vòng bắt đầu từ 1
+                    'team1_id' => $team1,
+                    'team2_id' => $team2,
+                    'team1_score' => null,
+                    'team2_score' => null,
                     'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                ];
             }
         }
+
+        // Xoay các đội để tạo lịch thi đấu tiếp theo
+        $rotated = [$team_ids[0]]; // Đội đầu tiên giữ nguyên
+        $remainingTeams = array_slice($team_ids, 1); // Các đội còn lại
+
+        // Xoay các đội còn lại theo chiều ngược kim đồng hồ
+        array_unshift($remainingTeams, array_pop($remainingTeams)); // Di chuyển đội cuối cùng lên đầu
+
+        // Ghép lại đội đầu tiên với các đội đã xoay
+        $team_ids = array_merge($rotated, $remainingTeams);
     }
 
+    return $matches;
+}
 
-    private function generateKnockoutSchedule($season_id)
-    {
-        // (Code sinh lịch vòng loại trực tiếp giống như đã trình bày ở trên)
-    }
-
-    // Cập nhật lịch vòng loại trực tiếp sau khi kết thúc vòng bảng
-    public function updateKnockoutSchedule($season_id)
-    {
-        // (Code cập nhật vòng loại trực tiếp như đã trình bày ở trên)
-    }
 }

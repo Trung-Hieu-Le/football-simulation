@@ -13,7 +13,7 @@
         <div class="col-md-8">
             <h2>Bảng xếp hạng</h2>
             @foreach ($groupStandings as $groupName => $standings)
-                <h3>Group {{ $groupName }}</h3>
+                <h3>Group {{ ucfirst($groupName) }}</h3>
                 <table class="table">
                     <thead>
                         <tr>
@@ -30,22 +30,15 @@
                         @foreach ($standings as $index => $team)
                         @php
                             $bgColor = '';
-                            if ($index < 4) {
+                            if ($index < 1) {
                                 $bgColor = 'table-success'; // Light green
-                            } elseif ($index >= count($standings) - 4) {
+                            } elseif ($index >= (count($standings)*3/4)) {
                                 $bgColor = 'table-danger'; // Light red
                             }
                         @endphp
                             <tr class="{{ $bgColor }}">
-                                <td>{{ $team->position }}</td>
-                                <td>
-                                    <div style="background: linear-gradient(to right, {{ $team->color_1 }} 60%, {{ $team->color_2 }} 40%);
-                                        color: {{ $team->color_3 }};
-                                        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-                                        padding: 5px; border-radius: 5px;">
-                                        {{ $team->team_name }}
-                                    </div>
-                                </td>
+                                <td>{{ $index+1 }}</td>
+                                <td>{{ $team->team_name }}</td>
                                 <td>{{ $team->match_played }}</td>
                                 <td>{{ $team->goal_scored }}</td>
                                 <td>{{ $team->goal_conceded }}</td>
@@ -54,20 +47,21 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>                
+                </table>
             @endforeach
         </div>
 
         <!-- Col-4: Vòng đấu -->
         <div class="col-md-4">
             <h2>Vòng đấu</h2>
-            <form action="{{ route('simulate.next.match') }}" method="POST">
+            <form action="{{ route('seasons.simulate') }}" method="POST">
                 @csrf
-                <input type="hidden" name="season_id" value="{{ $season_id }}">
+                <input type="hidden" name="season_id" value="{{ $season->id }}">
                 <button type="submit" class="btn btn-primary">Next Match</button>
             </form>
-            
-            <table class="table table-striped">
+
+            <h3>Matches Played</h3>
+            <table class="table">
                 <thead>
                     <tr>
                         <th>Round</th>
@@ -76,25 +70,31 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($nextMatch as $match)
+                    @foreach ($completedMatches as $match)
+                        <tr>
+                            <td>{{ $match->tier }}</td>
+                            <td>{{ $match->team1_name }}</td>
+                            <td>{{ $match->team2_name }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+
+            <h3>Next Matches</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Round</th>
+                        <th>Team 1</th>
+                        <th>Team 2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($nextMatches as $match)
                         <tr>
                             <td>{{ $match->round }}</td>
-                            <td>
-                                <div style="background: linear-gradient(to right, {{ $match->team1_color_1 }} 60%, {{ $match->team1_color_2 }} 40%);
-                                    color: {{ $match->team1_color_2 }};
-                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-                                    padding: 5px; border-radius: 5px;">
-                                    {{ $match->team1_name }}
-                                </div>
-                            </td>
-                            <td>
-                                <div style="background: linear-gradient(to right, {{ $match->team2_color_1 }} 60%, {{ $match->team2_color_2 }} 40%);
-                                    color: {{ $match->team2_color_2 }};
-                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-                                    padding: 5px; border-radius: 5px;">
-                                    {{ $match->team2_name }}
-                                </div>
-                            </td>
+                            <td>{{ $match->team1_name }}</td>
+                            <td>{{ $match->team2_name }}</td>
                         </tr>
                     @endforeach
                 </tbody>

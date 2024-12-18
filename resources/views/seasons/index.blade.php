@@ -1,49 +1,33 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <h2>Danh sách Mùa giải</h2>
-    <a href="{{ route('seasons.create') }}" method="GET" class="btn btn-primary mb-3">Thêm Mùa giải</a>
-
-    <table class="table table-striped">
+    <h1>Seasons</h1>
+    <a href="{{ route('seasons.create') }}" class="btn btn-primary">Create New Season</a>
+    <table class="table">
         <thead>
             <tr>
-                <th>#</th>
-                <th>Tên Mùa giải</th>
-                <th>Ngày tạo</th>
-                <th>Hành động</th>
+                <th>ID</th>
+                <th>Season</th>
+                <th>Số đội</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($seasons as $season)
                 <tr>
                     <td>{{ $season->id }}</td>
-                    <td><a href="{{ route('league.detail', $season->id) }}">Mùa giải {{ $season->season }}</a></td>
-                    <td>{{ $season->created_at }}</td>
+                    <td>{{ $season->season }}</td>
+                    <td>{{ $season->teams_count }}</td>
                     <td>
-                        <form action="{{ route('seasons.destroy', $season->id) }}" method="POST" onsubmit="return confirmDelete()">
+                        <form action="{{ route('seasons.destroy', $season->id) }}" method="POST">
                             @csrf
                             @method('DELETE')
-                            <button class="btn btn-danger btn-sm">Xóa</button>
+                            <button type="submit" class="btn btn-danger">Delete</button>
                         </form>
-                        <form action="{{ route('seasons.groupStage', $season->id) }}" method="POST">
-                            @csrf
-                            <button class="btn btn-info btn-sm">Chia bảng</button>
-                        </form>
-                        <form action="{{ route('seasons.schedule', $season->id) }}" method="POST">
-                            @csrf
-                            <button class="btn btn-warning btn-sm">Tạo lịch đấu</button>
-                        </form>
+                        <a href="{{ route('seasons.show', $season->id) }}" class="btn btn-info">View Details</a>
                     </td>
                 </tr>
             @endforeach
         </tbody>
     </table>
-</div>
-
-<script>
-    function confirmDelete() {
-        return confirm('Bạn có chắc chắn muốn xóa mùa giải này không?');
-    }
-</script>
 @endsection

@@ -15,88 +15,54 @@ class LeagueController extends Controller
         // Lấy danh sách các nhóm và đội trong mỗi nhóm
         $groups = DB::table('team_groups')
             ->where('season_id', $season_id)
-            ->select('group_name', 'team_ids')  // `team_ids` lưu dưới dạng JSON
+            ->select('group_name', 'team_ids') // `team_ids` lưu dưới dạng JSON
             ->get();
 
         $groupStandings = [];
         foreach ($groups as $group) {
-            $team_ids = json_decode($group->team_ids);
-            $groupStandings[$group->group_name] = $this->calculateGroupStandings($season_id, $team_ids);
+            $team_ids = json_decode($group->team_ids); // Giải mã danh sách đội từ JSON
+
+            // Lấy thông tin vị trí của từng đội trong bảng
+            $standings = DB::table('histories')
+                ->join('teams', 'histories.team_id', '=', 'teams.id')
+                ->whereIn('team_id', $team_ids)
+                ->where('season_id', $season_id)
+                ->select('team_id', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3', 'position', 'match_played', 'goal_scored', 'goal_conceded', 'goal_difference', 'tier', 'points')
+                ->orderBy('position', 'asc')
+                ->get();
+
+            $groupStandings[$group->group_name] = $standings;
         }
 
         // Lấy danh sách các trận đấu và phân loại theo vòng
         $matches = DB::table('matches')
             ->where('season_id', $season_id)
-            ->orderBy('round', 'asc')
+            ->orderBy('id', 'asc')
             ->get()
             ->groupBy('round');
-        return view('league.detail', compact('season', 'groupStandings', 'matches'));
-    }
-
-    private function calculateGroupStandings($season_id, $team_ids)
-    {
-        $teams = DB::table('teams')->whereIn('id', $team_ids)->get();
-
-        // Tạo bảng xếp hạng ban đầu
-        $standings = [];
-        foreach ($teams as $team) {
-            $standings[$team->id] = [
-                'id' => $team->id,
-                'name' => $team->name,
-                'points' => 0,
-                'goal_difference' => 0,
-                'goals_scored' => 0,
-                'form' => [],
-            ];
-        }
-
-        // Lấy các trận đấu trong nhóm
-        $matches = DB::table('matches')
+        $nextMatch = DB::table('matches')
+            ->leftJoin('teams as team1', 'matches.team1_id', '=', 'team1.id')
+            ->leftJoin('teams as team2', 'matches.team2_id', '=', 'team2.id')
             ->where('season_id', $season_id)
-            ->whereIn('team1_id', $team_ids)
-            ->whereIn('team2_id', $team_ids)
-            ->whereNotNull('team1_score')
-            ->whereNotNull('team2_score')
+            ->whereNull('team1_score') // Các trận chưa có tỉ số
+            ->whereNull('team2_score')
+            ->select(
+                'matches.round',
+                'matches.team1_id',
+                'matches.team2_id',
+                'team1.name as team1_name',
+                'team1.color_1 as team1_color_1',
+                'team1.color_2 as team1_color_2',
+                'team1.color_3 as team1_color_3',
+                'team2.name as team2_name',
+                'team2.color_1 as team2_color_1',
+                'team2.color_2 as team2_color_2',
+                'team2.color_3 as team2_color_3'
+            )
+            ->limit(8) // Lấy 8 trận tiếp theo
             ->get();
-
-        // Cập nhật dữ liệu xếp hạng
-        foreach ($matches as $match) {
-            $team1 = &$standings[$match->team1_id];
-            $team2 = &$standings[$match->team2_id];
-
-            $team1['goals_scored'] += $match->team1_score;
-            $team2['goals_scored'] += $match->team2_score;
-
-            $goalDifference = $match->team1_score - $match->team2_score;
-            $team1['goal_difference'] += $goalDifference;
-            $team2['goal_difference'] -= $goalDifference;
-
-            if ($match->team1_score > $match->team2_score) {
-                $team1['points'] += 3;
-                $team1['form'][] = 'W';
-                $team2['form'][] = 'L';
-            } elseif ($match->team1_score < $match->team2_score) {
-                $team2['points'] += 3;
-                $team2['form'][] = 'W';
-                $team1['form'][] = 'L';
-            } else {
-                $team1['points'] += 1;
-                $team2['points'] += 1;
-                $team1['form'][] = 'D';
-                $team2['form'][] = 'D';
-            }
-        }
-
-        // Sắp xếp bảng xếp hạng
-        usort($standings, function ($a, $b) {
-            return $b['points'] <=> $a['points']            // Điểm
-                ?: $b['goal_difference'] <=> $a['goal_difference'] // Hiệu số bàn thắng
-                ?: $b['goals_scored'] <=> $a['goals_scored'] // Tổng số bàn thắng
-                ?: strcmp(implode('', array_reverse($b['form'])), implode('', array_reverse($a['form']))) // Phong độ
-                ?: $a['id'] <=> $b['id'];                    // ID tăng dần
-        });
-
-        return $standings;
+        // dd($nextMatch, $groupStandings);
+        return view('league.detail', compact('season', 'groupStandings', 'matches', 'nextMatch', 'season_id'));
     }
-}
 
+}

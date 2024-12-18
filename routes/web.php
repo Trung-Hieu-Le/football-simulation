@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\LeagueController;
+use App\Http\Controllers\MatchController;
 
 
 /*
@@ -22,10 +23,9 @@ Route::put('/teams/{id}', [TeamController::class, 'update'])->name('teams.update
 
 Route::get('/', [SeasonController::class, 'index'])->name('seasons.index');
 Route::get('/seasons', [SeasonController::class, 'index'])->name('seasons.index');
-Route::get('/seasons/create', [SeasonController::class, 'store'])->name('seasons.create');
+Route::get('/seasons/create', [SeasonController::class, 'create'])->name('seasons.create');
+Route::post('/seasons', [SeasonController::class, 'store'])->name('seasons.store');
+Route::get('/seasons/{id}', [SeasonController::class, 'show'])->name('seasons.show');
 Route::delete('/seasons/{id}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
-Route::post('/seasons/{season}/group-stage', [SeasonController::class, 'groupStage'])->name('seasons.groupStage');
-Route::post('/seasons/{season}/schedule', [SeasonController::class, 'generateSchedule'])->name('seasons.schedule');
 
-Route::get('/season/detail/{season_id}', [LeagueController::class, 'detail'])->name('league.detail');
-Route::post('/season/detail/{season_id}/simulate', [LeagueController::class, 'simulateNextMatches'])->name('league.simulate');
+Route::post('/seasons/simulate', [SeasonController::class, 'store'])->name('seasons.simulate');
