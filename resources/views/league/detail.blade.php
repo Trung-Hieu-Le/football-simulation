@@ -2,69 +2,56 @@
 
 @section('content')
 <div class="container">
+    <h1>Mùa giải: {{ $season->season }}</h1>
+
     <div class="row">
-        <!-- Left Section: Danh sách team theo bảng -->
-        <div class="col-8">
-            <h4>Danh Sách Các Bảng</h4>
-            @foreach ($groups as $group)
-                <div class="mb-3">
-                    <h5>Bảng {{ $group->group_name }}</h5>
-                    <ul class="list-group">
-                        @foreach ($group->teams as $team)
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ $team->name }} 
-                                <span>Form: {{ $team->form }}</span>
-                            </li>
+        <!-- Col-8: Bảng xếp hạng -->
+        <div class="col-md-8">
+            <h2>Bảng xếp hạng</h2>
+            @foreach ($groupStandings as $groupName => $standings)
+                <h3>{{ $groupName }}</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Hạng</th>
+                            <th>Đội</th>
+                            <th>Điểm</th>
+                            <th>Hiệu số</th>
+                            <th>Bàn thắng</th>
+                            <th>Phong độ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($standings as $index => $team)
+                            <tr>
+                                <td>{{ $index + 1 }}</td>
+                                <td>{{ $team['name'] }}</td>
+                                <td>{{ $team['points'] }}</td>
+                                <td>{{ $team['goal_difference'] }}</td>
+                                <td>{{ $team['goals_scored'] }}</td>
+                                <td>
+                                    @foreach ($team['form'] as $result)
+                                        <span class="badge {{ $result == 'W' ? 'bg-success' : ($result == 'L' ? 'bg-danger' : 'bg-secondary') }}">
+                                            {{ $result }}
+                                        </span>
+                                    @endforeach
+                                </td>
+                            </tr>
                         @endforeach
-                    </ul>
-                </div>
+                    </tbody>
+                </table>
             @endforeach
         </div>
 
-        <!-- Right Section: Trận đấu gần nhất -->
-        <div class="col-4">
-            <div class="sticky-top">
-                <h4>8 Trận Gần Nhất</h4>
-                <ul class="list-group mb-3">
-                    @foreach ($current_matches as $match)
-                        <li class="list-group-item">
-                            <strong>Team {{ $match->team1_id }}</strong> vs <strong>Team {{ $match->team2_id }}</strong>
-                            <span class="text-muted"> (Chưa có kết quả)</span>
-                        </li>
-                    @endforeach
-                </ul>
-                <form action="{{ route('league.simulate', $season_id) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-primary w-100">Giả lập kết quả 8 trận tiếp theo</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- History Section -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <h4>Lịch Sử Trận Đấu</h4>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Team 1</th>
-                        <th>Team 2</th>
-                        <th>Tỉ số</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($match_history as $index => $match)
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>Team {{ $match->team1_id }}</td>
-                            <td>Team {{ $match->team2_id }}</td>
-                            <td>{{ $match->team1_score }} - {{ $match->team2_score }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <!-- Col-4: Vòng đấu -->
+        <div class="col-md-4">
+            <h2>Vòng đấu</h2>
+            @foreach ($matches as $round => $roundMatches)
+                <h3>{{ $round }}</h3>
+                @foreach ($roundMatches as $match)
+                    <p>{{ $match->team1_name ?? 'TBA' }} {{ $match->team1_score ?? '?' }} - {{ $match->team2_score ?? '?' }} {{ $match->team2_name ?? 'TBA' }}</p>
+                @endforeach
+            @endforeach
         </div>
     </div>
 </div>

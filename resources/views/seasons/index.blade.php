@@ -18,7 +18,7 @@
             @foreach ($seasons as $season)
                 <tr>
                     <td>{{ $season->id }}</td>
-                    <td>Mùa giải {{ $season->season }}</td>
+                    <td><a href="{{ route('league.detail', $season->id) }}">Mùa giải {{ $season->season }}</a></td>
                     <td>{{ $season->created_at }}</td>
                     <td>
                         <form action="{{ route('seasons.destroy', $season->id) }}" method="POST" onsubmit="return confirmDelete()">

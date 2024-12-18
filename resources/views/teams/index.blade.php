@@ -87,8 +87,8 @@
                                     @if ($history->team_name == $team->name)
                                         <tr>
                                             <td>{{ $history->season }}</td>
-                                            <td>{{ $history->goals_scored }}</td>
-                                            <td>{{ $history->goals_conceded }}</td>
+                                            <td>{{ $history->goal_scored }}</td>
+                                            <td>{{ $history->goal_conceded }}</td>
                                             <td>{{ $history->goal_difference }}</td>
                                             <td>{{ $history->position }}</td>
                                             <td>{{ $history->tier }}</td>

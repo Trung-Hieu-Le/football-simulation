@@ -14,7 +14,8 @@ class TeamController extends Controller
         $teams = DB::table('teams')->get();
         $teamHistories = DB::table('histories')
         ->join('teams', 'teams.id', '=', 'histories.team_id')
-        ->select('histories.*', 'teams.name as team_name')
+        ->join('seasons', 'seasons.id', '=', 'histories.season_id')
+        ->select('histories.*', 'teams.name as team_name', 'seasons.season')
         ->get();
         $regions = DB::table('regions')->get();
 
