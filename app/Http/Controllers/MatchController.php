@@ -14,7 +14,7 @@ class MatchController extends Controller
             ->where('season_id', $season_id)
             ->whereNull('team1_score')
             ->whereNull('team2_score')
-            ->limit(8)
+            ->limit(1)
             ->get();
         foreach ($nextMatches as $match) {
             // Tạo kết quả ngẫu nhiên cho trận đấu
@@ -57,7 +57,7 @@ class MatchController extends Controller
         } elseif ($goalsScored == $goalsConceded) {
             $points += 1; // hòa 1 điểm
         }
-        $tier = $this->getTierByMatchPlayed($matchPlayed);
+        // $tier = $this->getTierByMatchPlayed($matchPlayed);
 
         DB::table('histories')->updateOrInsert(
             ['team_id' => $teamId, 'season_id' => $seasonId],
@@ -67,7 +67,7 @@ class MatchController extends Controller
                 'goal_conceded' => $goalConceded,
                 'goal_difference' => $goalDifference,
                 'points' => $points,
-                'tier' => $tier,
+                // 'tier' => $tier,
                 'updated_at' => now(),
             ]
         );
@@ -84,7 +84,7 @@ class MatchController extends Controller
             DB::raw('COALESCE(teams.form, 0) as team_form') // Chuẩn hóa form
         )
         ->get()
-        ->groupBy('group'); // Nhóm theo bảng
+        ->groupBy('tier'); // Nhóm theo bảng
 
     // Lặp qua từng bảng
     foreach ($teamsHistory as $group => $groupTeams) {
@@ -98,7 +98,7 @@ class MatchController extends Controller
             DB::table('histories')
                 ->where('team_id', $team->team_id)
                 ->where('season_id', $season_id)
-                ->where('group', $group)
+                ->where('tier', $group)
                 ->update(['position' => $index + 1]);
         }
     }
@@ -106,22 +106,22 @@ class MatchController extends Controller
 
 
 
-    private function getTierByMatchPlayed($matchPlayed)
-    {
-        if ($matchPlayed <= 7) {
-            return 'group_stage'; // Giai đoạn vòng bảng
-        } elseif ($matchPlayed == 8) {
-            return 'round_of_32'; // Vòng 32 đội
-        } elseif ($matchPlayed == 9) {
-            return 'round_of_16'; // Vòng 16 đội
-        } elseif ($matchPlayed == 10) {
-            return 'quarter_final'; // Vòng tứ kết
-        } elseif ($matchPlayed == 11) {
-            return 'semi_final'; // Vòng bán kết
-        } elseif ($matchPlayed == 12) {
-            return 'final'; // Chung kết
-        } else {
-            return 'unknown'; // Trường hợp không xác định
-        }
-    }
+    // private function getTierByMatchPlayed($matchPlayed)
+    // {
+    //     if ($matchPlayed <= 7) {
+    //         return 'group_stage'; // Giai đoạn vòng bảng
+    //     } elseif ($matchPlayed == 8) {
+    //         return 'round_of_32'; // Vòng 32 đội
+    //     } elseif ($matchPlayed == 9) {
+    //         return 'round_of_16'; // Vòng 16 đội
+    //     } elseif ($matchPlayed == 10) {
+    //         return 'quarter_final'; // Vòng tứ kết
+    //     } elseif ($matchPlayed == 11) {
+    //         return 'semi_final'; // Vòng bán kết
+    //     } elseif ($matchPlayed == 12) {
+    //         return 'final'; // Chung kết
+    //     } else {
+    //         return 'unknown'; // Trường hợp không xác định
+    //     }
+    // }
 }

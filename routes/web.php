@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\SeasonController;
-use App\Http\Controllers\LeagueController;
 use App\Http\Controllers\MatchController;
 
 
@@ -28,4 +27,4 @@ Route::post('/seasons', [SeasonController::class, 'store'])->name('seasons.store
 Route::get('/seasons/{id}', [SeasonController::class, 'show'])->name('seasons.show');
 Route::delete('/seasons/{id}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
 
-Route::post('/seasons/simulate', [SeasonController::class, 'store'])->name('seasons.simulate');
+Route::post('/seasons/simulate', [MatchController::class, 'simulateMatch'])->name('seasons.simulate');

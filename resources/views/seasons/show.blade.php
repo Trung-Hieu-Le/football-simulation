@@ -30,9 +30,18 @@
                         @foreach ($standings as $index => $team)
                         @php
                             $bgColor = '';
-                            if ($index < 1) {
+                            $promotionRelegationCount = floor(count($standings) / 4);
+
+                            // Nhà vô địch
+                            if ($groupName == 'tier1' && $index == 0) {
                                 $bgColor = 'table-success'; // Light green
-                            } elseif ($index >= (count($standings)*3/4)) {
+                            }
+                            // Các đội lên hạng
+                            elseif ($groupName != 'tier1' && $index < $promotionRelegationCount) {
+                                $bgColor = 'table-success'; // Light green
+                            }
+                            // Các đội xuống hạng (trừ tier cuối)
+                            elseif ($groupName != 'tier3' && $index >= (count($standings) - $promotionRelegationCount)) {
                                 $bgColor = 'table-danger'; // Light red
                             }
                         @endphp
@@ -53,6 +62,28 @@
 
         <!-- Col-4: Vòng đấu -->
         <div class="col-md-4">
+            @if($currentRound === $maxRound+1)
+                <h2>Vô địch Tier 1</h2>
+                @if($champion)
+                    <p class="bg-success text-white p-2">{{ $champion->team_name }} - {{ $champion->points }}pts</p>
+                @else
+                    <p>Chưa xác định</p>
+                @endif
+
+                <h2>Các đội lên hạng</h2>
+                <ul>
+                    @foreach($promotedTeams as $team)
+                        <li class="bg-success text-white p-2">{{ $team->team_name }} - {{ $team->tier }}</li>
+                    @endforeach
+                </ul>
+
+                <h2>Các đội xuống hạng</h2>
+                <ul>
+                    @foreach($relegatedTeams as $team)
+                        <li class="bg-danger text-white p-2">{{ $team->team_name }} - {{ $team->tier }}</li>
+                    @endforeach
+                </ul>
+            @endif
             <h2>Vòng đấu</h2>
             <form action="{{ route('seasons.simulate') }}" method="POST">
                 @csrf
@@ -65,16 +96,17 @@
                 <thead>
                     <tr>
                         <th>Round</th>
-                        <th>Team 1</th>
-                        <th>Team 2</th>
+                        <th>Match</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($completedMatches as $match)
                         <tr>
-                            <td>{{ $match->tier }}</td>
-                            <td>{{ $match->team1_name }}</td>
-                            <td>{{ $match->team2_name }}</td>
+                            <td>{{ $match->round }}</td>
+                            <td>{{ $match->team1_name }} 
+                                {{ $match->team1_score }} - {{ $match->team2_score }} 
+                                {{ $match->team2_name }}
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -85,16 +117,17 @@
                 <thead>
                     <tr>
                         <th>Round</th>
-                        <th>Team 1</th>
-                        <th>Team 2</th>
+                        <th>Match</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($nextMatches as $match)
                         <tr>
                             <td>{{ $match->round }}</td>
-                            <td>{{ $match->team1_name }}</td>
-                            <td>{{ $match->team2_name }}</td>
+                            <td>{{ $match->team1_name }} 
+                                {{ $match->team1_score }} - {{ $match->team2_score }} 
+                                {{ $match->team2_name }}
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

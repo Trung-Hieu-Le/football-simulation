@@ -28,8 +28,14 @@ class SeasonController extends Controller
     // Hiển thị form tạo mới
     public function create()
     {
-        return view('seasons.create');
+        $lastSeason = DB::table('seasons')->orderBy('id', 'desc')->first();
+
+        $nextSeason = $lastSeason ? $lastSeason->season + 1 : 1;
+        $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 12;
+
+        return view('seasons.create', compact('nextSeason', 'nextTeamsCount'));
     }
+
 
 
     // Hiển thị chi tiết season
@@ -46,12 +52,24 @@ class SeasonController extends Controller
             ->get()
             ->groupBy('tier');
 
+        //TODO: currentRound không vượt quá giá trị quy định
+        $currentRound = DB::table('matches')
+            ->where('season_id', $id)
+            ->whereNull('team1_score')
+            ->orWhereNull('team2_score')
+            ->orderBy('round', 'asc')
+            ->value('round');
+        $maxRound = floor($season->teams_count / 3) - 1;
+        $currentRound = $currentRound ?? $maxRound + 1;
+        $promotionRelegationCount = floor($season->teams_count / 12);
+
         // Lấy thông tin các trận đấu đã xảy ra và sắp tới
         $completedMatches = DB::table('matches')
             ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
             ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
             ->where('matches.team1_score', '!=', null)
             ->where('matches.team2_score', '!=', null)
+            ->where('matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
             ->where('matches.season_id', $id)
             ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
             ->get();
@@ -60,16 +78,31 @@ class SeasonController extends Controller
         $nextMatches = DB::table('matches')
             ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
             ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
-            ->where(function ($query) {
-                $query->whereNull('matches.team1_score')
-                    ->orWhereNull('matches.team2_score');
-            })
+            ->where('matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
             ->where('matches.season_id', $id)
             ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
             ->get();
 
+        if ($currentRound === $maxRound + 1) {
+            $champion = null;
+            $promotedTeams = collect();
+            $relegatedTeams = collect();
+            $champion = $groupStandings['tier1']->where('position', 1)->first();
 
-        return view('seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches'));
+            foreach ($groupStandings as $tierKey => $standings) {
+                $tierNumber = (int) str_replace('tier', '', $tierKey);
+
+                if ($tierNumber > 1) {
+                    $promotedTeams = $promotedTeams->merge($standings->where('position', '<=', $promotionRelegationCount));
+                }
+
+                if ($tierNumber < count($groupStandings)) {
+                    $relegatedTeams = $relegatedTeams->merge($standings->where('position', '>', $standings->count() - $promotionRelegationCount));
+                }
+            }
+        }
+
+        return view('seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches', 'currentRound', 'maxRound', 'champion', 'promotedTeams', 'relegatedTeams'));
     }
 
     // Lưu season và phân chia teams
@@ -151,7 +184,7 @@ class SeasonController extends Controller
     private function createMatches($seasonId)
     {
         // Lấy tất cả các nhóm (tier) trong mùa giải
-        $teamGroups = DB::table('team_groups')->where('season_id', $seasonId)->get();
+        $teamGroups = DB::table('team_groups')->where('season_id', $seasonId)->orderBy('tier', 'desc')->get();
 
         // Khởi tạo mảng chứa các trận đấu
         $matches = [];
@@ -170,55 +203,57 @@ class SeasonController extends Controller
         }
 
         // Chèn tất cả các trận đấu vào bảng 'matches'
+        usort($matches, function ($a, $b) {
+            return $a['round'] <=> $b['round'];
+        });
         DB::table('matches')->insert($matches);
     }
 
 
     private function generateGroupMatches($season_id, $team_ids, $group_name)
-{
-    $numTeams = count($team_ids);
+    {
+        $numTeams = count($team_ids);
 
-    if ($numTeams % 2 !== 0) {
-        $team_ids[] = null; // null đại diện cho "bye"
-        $numTeams++;
-    }
-
-    $rounds = $numTeams - 1; // Số vòng đấu
-    $matches = [];
-
-    // Tạo các trận đấu theo vòng
-    for ($round = 0; $round < $rounds; $round++) {
-        for ($i = 0; $i < $numTeams / 2; $i++) {
-            $team1 = $team_ids[$i];
-            $team2 = $team_ids[$numTeams - 1 - $i];
-
-            // Kiểm tra và tạo trận đấu nếu không phải "bye"
-            if ($team1 !== null && $team2 !== null) {
-                $matches[] = [
-                    'season_id' => $season_id,
-                    'tier' => $group_name,
-                    'round' => $round + 1,  // Số vòng bắt đầu từ 1
-                    'team1_id' => $team1,
-                    'team2_id' => $team2,
-                    'team1_score' => null,
-                    'team2_score' => null,
-                    'created_at' => now(),
-                ];
-            }
+        if ($numTeams % 2 !== 0) {
+            $team_ids[] = null; // null đại diện cho "bye"
+            $numTeams++;
         }
 
-        // Xoay các đội để tạo lịch thi đấu tiếp theo
-        $rotated = [$team_ids[0]]; // Đội đầu tiên giữ nguyên
-        $remainingTeams = array_slice($team_ids, 1); // Các đội còn lại
+        $rounds = $numTeams - 1; // Số vòng đấu
+        $matches = [];
 
-        // Xoay các đội còn lại theo chiều ngược kim đồng hồ
-        array_unshift($remainingTeams, array_pop($remainingTeams)); // Di chuyển đội cuối cùng lên đầu
+        // Tạo các trận đấu theo vòng
+        for ($round = 0; $round < $rounds; $round++) {
+            for ($i = 0; $i < $numTeams / 2; $i++) {
+                $team1 = $team_ids[$i];
+                $team2 = $team_ids[$numTeams - 1 - $i];
 
-        // Ghép lại đội đầu tiên với các đội đã xoay
-        $team_ids = array_merge($rotated, $remainingTeams);
+                // Kiểm tra và tạo trận đấu nếu không phải "bye"
+                if ($team1 !== null && $team2 !== null) {
+                    $matches[] = [
+                        'season_id' => $season_id,
+                        'tier' => $group_name,
+                        'round' => $round + 1,  // Số vòng bắt đầu từ 1
+                        'team1_id' => $team1,
+                        'team2_id' => $team2,
+                        'team1_score' => null,
+                        'team2_score' => null,
+                        'created_at' => now(),
+                    ];
+                }
+            }
+
+            // Xoay các đội để tạo lịch thi đấu tiếp theo
+            $rotated = [$team_ids[0]]; // Đội đầu tiên giữ nguyên
+            $remainingTeams = array_slice($team_ids, 1); // Các đội còn lại
+
+            // Xoay các đội còn lại theo chiều ngược kim đồng hồ
+            array_unshift($remainingTeams, array_pop($remainingTeams)); // Di chuyển đội cuối cùng lên đầu
+
+            // Ghép lại đội đầu tiên với các đội đã xoay
+            $team_ids = array_merge($rotated, $remainingTeams);
+        }
+
+        return $matches;
     }
-
-    return $matches;
-}
-
 }
