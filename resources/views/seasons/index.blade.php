@@ -9,6 +9,8 @@
                 <th>ID</th>
                 <th>Season</th>
                 <th>Số đội</th>
+                <th>Tỷ lệ trận đã hoàn thành (%)</th>
+                <th>Vòng hiện tại / Tổng vòng</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -18,8 +20,10 @@
                     <td>{{ $season->id }}</td>
                     <td>{{ $season->season }}</td>
                     <td>{{ $season->teams_count }}</td>
+                    <td>{{ $season->match_completion_rate }}%</td>
+                    <td>{{ $season->current_round }} / {{ $season->max_round }}</td>
                     <td>
-                        <form action="{{ route('seasons.destroy', $season->id) }}" method="POST">
+                        <form action="{{ route('seasons.destroy', $season->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this season?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger">Delete</button>
@@ -29,5 +33,6 @@
                 </tr>
             @endforeach
         </tbody>
+        
     </table>
 @endsection

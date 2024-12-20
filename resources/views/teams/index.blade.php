@@ -9,19 +9,55 @@
         <thead>
             <tr>
                 <th>STT</th>
-                <th>Tên đội</th>
-                <th>Tấn công</th>
-                <th>Phòng ngự</th>
-                <th>Kiểm soát</th>
-                <th>Thể lực</th>
-                <th>Tinh thần</th>
-                <th>Penalty</th>
-                <th>Phong độ</th>
-                <th>Tổng cộng</th>
-                {{-- <th>Màu sắc</th> --}}
+                <th>
+                    Tên đội
+                    <a href="{{ route('teams.index', ['sort' => 'name', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'name', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Tấn công
+                    <a href="{{ route('teams.index', ['sort' => 'attack', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'attack', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Phòng ngự
+                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Kiểm soát
+                    <a href="{{ route('teams.index', ['sort' => 'control', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'control', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Thể lực
+                    <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Tinh thần
+                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Penalty
+                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Phong độ
+                    <a href="{{ route('teams.index', ['sort' => 'form', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'form', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Tổng cộng
+                    <a href="{{ route('teams.index', ['sort' => 'total', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'total', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
                 <th>Hành động</th>
             </tr>
         </thead>
+        
         <tbody>
             @foreach ($teams as $key=>$team)
                 <tr>

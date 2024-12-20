@@ -8,10 +8,15 @@ use Illuminate\Support\Facades\DB;
 class TeamController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
+        $sort = $request->input('sort', 'name'); // Cột sắp xếp, mặc định là 'name'
+        $direction = $request->input('direction', 'asc');  // Hướng sắp xếp, mặc định là 'asc'
         // Lấy tất cả các đội bóng
-        $teams = DB::table('teams')->get();
+        $teams = DB::table('teams')
+        ->selectRaw('*, (attack + defense + control + stamina + aggressive + penalty + form) as total') // Tính tổng cộng
+        ->orderBy($sort, $direction)
+        ->get();
         $teamHistories = DB::table('histories')
         ->join('teams', 'teams.id', '=', 'histories.team_id')
         ->join('seasons', 'seasons.id', '=', 'histories.season_id')
