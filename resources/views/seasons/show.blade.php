@@ -33,10 +33,23 @@
     text-align: right;
     width: 45%;
 }
+.table-centered th,
+.table-centered td {
+    text-align: center; /* Căn giữa nội dung trong th và td */
+    vertical-align: middle; /* Căn giữa nội dung theo chiều dọc */
+}
 
 </style>
 @section('content')
 <div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/seasons/{{$season->id}}">Bảng Xếp Hạng</a></li>
+          <li class="breadcrumb-item"><a href="/matches/{{$season->id}}">Lịch Thi Đấu</a></li>
+          <li class="breadcrumb-item"><a href="/histories/{{$season->id}}">Thống Kê Mùa Giải</a></li>
+        </ol>
+    </nav>
+      
     <h1>Mùa giải: {{ $season->season }}</h1>
     @if (session('success'))
         <div class="alert alert-success">
@@ -44,24 +57,26 @@
         </div>
         @if (session('matchResult'))
             @php $matchResult = session('matchResult'); @endphp
-            <div class="scoreboard">
-                {{ $matchResult['team1_name'] }} {{ $matchResult['team1_score'] }} - {{ $matchResult['team2_score'] }} {{ $matchResult['team2_name'] }}
-            </div>
-
-            <div class="situations">
-                <div class="situation-left">
-                    @foreach ($matchResult['dangerousSituations'] as $situation)
-                        @if (str_contains($situation, $matchResult['team1_name']))
-                            <p>{{ $situation }}</p>
-                        @endif
-                    @endforeach
+            <div class="border px-5 pt-2 mb-2">
+                <div class="scoreboard h2">
+                    {{ $matchResult['team1_name'] }} &nbsp; {{ $matchResult['team1_score'] }} - {{ $matchResult['team2_score'] }} &nbsp; {{ $matchResult['team2_name'] }}
                 </div>
-                <div class="situation-right">
-                    @foreach ($matchResult['dangerousSituations'] as $situation)
-                        @if (str_contains($situation, $matchResult['team2_name']))
-                            <p>{{ $situation }}</p>
-                        @endif
-                    @endforeach
+    
+                <div class="situations fst-italic lh-1">
+                    <div class="situation-left">
+                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                            @if (str_contains($situation, $matchResult['team1_name']))
+                                <p>{{ $situation }}</p>
+                            @endif
+                        @endforeach
+                    </div>
+                    <div class="situation-right">
+                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                            @if (str_contains($situation, $matchResult['team2_name']))
+                                <p>{{ $situation }}</p>
+                            @endif
+                        @endforeach
+                    </div>
                 </div>
             </div>
 
@@ -165,40 +180,77 @@
             </form>
 
             <h3>Next Matches</h3>
-            <table class="table">
+            <table class="table table-centered">
                 <thead>
                     <tr>
                         <th>Round</th>
-                        <th>Match</th>
+                        <th>Team 1</th>
+                        <th>Score</th>
+                        <th>team 2</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($nextMatches as $match)
                         <tr>
                             <td>{{ $match->round }}</td>
-                            <td>{{ $match->team1_name }} 
+                            <td>
+                                <div style="background: linear-gradient(to right, {{ $match->team1_c1 }} 60%, {{ $match->team1_c2 }} 40%);
+                                    color: {{ $match->team1_c3 }};
+                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+                                    padding: 5px; border-radius: 5px;">
+                                    {{ $match->team1_name }}
+                                </div>
+                            </td>
+                            <td>
                                 {{ $match->team1_score }} - {{ $match->team2_score }} 
-                                {{ $match->team2_name }}
+                            </td>
+                            <td>
+                                <div style="background: linear-gradient(to right, {{ $match->team2_c1 }} 60%, {{ $match->team2_c2 }} 40%);
+                                    color: {{ $match->team2_c3 }};
+                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+                                    padding: 5px; border-radius: 5px;">
+                                    {{ $match->team2_name }}
+                                </div>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
             <h3>Matches Played</h3>
-            <table class="table">
+            <center>
+                
+            </center>
+            <table class="table table-centered">
                 <thead>
                     <tr>
                         <th>Round</th>
-                        <th>Match</th>
+                        <th>Team 1</th>
+                        <th>Score</th>
+                        <th>team 2</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($completedMatches as $match)
                         <tr>
                             <td>{{ $match->round }}</td>
-                            <td>{{ $match->team1_name }} 
+                            <td>
+                                <div style="background: linear-gradient(to right, {{ $match->team1_c1 }} 60%, {{ $match->team1_c2 }} 40%);
+                                    color: {{ $match->team1_c3 }};
+                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+                                    padding: 5px; border-radius: 5px;">
+                                    {{ $match->team1_name }}
+                                </div>
+                            </td>
+                            <td>
                                 {{ $match->team1_score }} - {{ $match->team2_score }} 
-                                {{ $match->team2_name }}
+                            </td>
+                            <td>
+                                <div style="background: linear-gradient(to right, {{ $match->team2_c1 }} 60%, {{ $match->team2_c2 }} 40%);
+                                    color: {{ $match->team2_c3 }};
+                                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+                                    padding: 5px; border-radius: 5px;">
+                                    {{ $match->team2_name }}
+                                </div>
                             </td>
                         </tr>
                     @endforeach

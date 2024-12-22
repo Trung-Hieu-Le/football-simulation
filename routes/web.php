@@ -26,5 +26,8 @@ Route::get('/seasons/create', [SeasonController::class, 'create'])->name('season
 Route::post('/seasons', [SeasonController::class, 'store'])->name('seasons.store');
 Route::get('/seasons/{id}', [SeasonController::class, 'show'])->name('seasons.show');
 Route::delete('/seasons/{id}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
+Route::get('/matches/{id}', [SeasonController::class, 'listMatches'])->name('matches.show');
+Route::get('/histories/{id}', [SeasonController::class, 'showStatistics'])->name('histories.show');
+
 
 Route::post('/seasons/simulate', [MatchController::class, 'simulateMatch'])->name('seasons.simulate');

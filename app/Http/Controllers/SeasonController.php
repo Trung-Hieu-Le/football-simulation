@@ -9,54 +9,54 @@ class SeasonController extends Controller
 {
     // Danh sách seasons
     public function index()
-{
-    // Lấy danh sách các mùa giải
-    $seasons = DB::table('seasons')->get();
+    {
+        // Lấy danh sách các mùa giải
+        $seasons = DB::table('seasons')->get();
 
-    // Thêm thông tin tỷ lệ trận và vòng vào từng season
-    $seasons = $seasons->map(function ($season) {
-        // Tổng số trận của mùa giải
-        $totalMatches = DB::table('matches')
-            ->where('season_id', $season->id)
-            ->count();
+        // Thêm thông tin tỷ lệ trận và vòng vào từng season
+        $seasons = $seasons->map(function ($season) {
+            // Tổng số trận của mùa giải
+            $totalMatches = DB::table('matches')
+                ->where('season_id', $season->id)
+                ->count();
 
-        // Số trận đã có tỉ số
-        $completedMatchesCount = DB::table('matches')
-            ->where('season_id', $season->id)
-            ->whereNotNull('team1_score')
-            ->whereNotNull('team2_score')
-            ->count();
+            // Số trận đã có tỉ số
+            $completedMatchesCount = DB::table('matches')
+                ->where('season_id', $season->id)
+                ->whereNotNull('team1_score')
+                ->whereNotNull('team2_score')
+                ->count();
 
-        // Tính tỷ lệ số trận đã có tỉ số
-        $matchCompletionRate = $totalMatches > 0 ? ($completedMatchesCount / $totalMatches) * 100 : 0;
+            // Tính tỷ lệ số trận đã có tỉ số
+            $matchCompletionRate = $totalMatches > 0 ? ($completedMatchesCount / $totalMatches) * 100 : 0;
 
-        // Xác định round hiện tại và round tối đa
-        $currentRound = DB::table('matches')
-            ->where('season_id', $season->id)
-            ->where(function ($query) {
-                $query->whereNull('team1_score')
-                      ->orWhereNull('team2_score');
-            })
-            ->orderBy('round', 'asc')
-            ->value('round');
+            // Xác định round hiện tại và round tối đa
+            $currentRound = DB::table('matches')
+                ->where('season_id', $season->id)
+                ->where(function ($query) {
+                    $query->whereNull('team1_score')
+                        ->orWhereNull('team2_score');
+                })
+                ->orderBy('round', 'asc')
+                ->value('round');
 
-        $maxRound = floor($season->teams_count / 3) - 1;
-        $currentRound = $currentRound ?? $maxRound + 1;
+            $maxRound = floor($season->teams_count / 3) - 1;
+            $currentRound = $currentRound ?? $maxRound + 1;
 
-        // Tính tỷ lệ vòng hiện tại so với tối đa
-        $roundRate = $currentRound > 0 ? ($currentRound / ($maxRound + 1)) * 100 : 0;
+            // Tính tỷ lệ vòng hiện tại so với tối đa
+            $roundRate = $currentRound > 0 ? ($currentRound / ($maxRound + 1)) * 100 : 0;
 
-        // Gắn thêm thông tin vào season
-        $season->match_completion_rate = round($matchCompletionRate, 2);
-        $season->round_rate = round($roundRate, 2);
-        $season->current_round = $currentRound;
-        $season->max_round = $maxRound + 1;
+            // Gắn thêm thông tin vào season
+            $season->match_completion_rate = round($matchCompletionRate, 2);
+            $season->round_rate = round($roundRate, 2);
+            $season->current_round = $currentRound;
+            $season->max_round = $maxRound + 1;
 
-        return $season;
-    });
+            return $season;
+        });
 
-    return view('seasons.index', compact('seasons'));
-}
+        return view('seasons.index', compact('seasons'));
+    }
 
 
     // Xóa season
@@ -93,6 +93,7 @@ class SeasonController extends Controller
             ->select('histories.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
             ->join('teams', 'teams.id', 'histories.team_id')
             ->where('season_id', $id)
+            ->orderBy('tier', 'asc')
             ->orderBy('position', 'asc')
             ->get()
             ->groupBy('tier');
@@ -102,11 +103,11 @@ class SeasonController extends Controller
             ->where('season_id', $id)
             ->where(function ($query) {
                 $query->whereNull('team1_score')
-                      ->orWhereNull('team2_score');
+                    ->orWhereNull('team2_score');
             })
             ->orderBy('round', 'asc')
             ->value('round');
-        
+
         $maxRound = floor($season->teams_count / 3) - 1;
         $currentRound = $currentRound ?? $maxRound + 1;
         $promotionRelegationCount = floor($season->teams_count / 12);
@@ -119,7 +120,8 @@ class SeasonController extends Controller
             ->where('matches.team2_score', '!=', null)
             ->where('matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
             ->where('matches.season_id', $id)
-            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
+            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name',
+            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
             ->get();
 
         // Lọc các trận đấu sắp tới
@@ -128,7 +130,8 @@ class SeasonController extends Controller
             ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
             ->where('matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
             ->where('matches.season_id', $id)
-            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name')
+            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name', 
+            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
             ->get();
 
         $champion = null;
@@ -169,6 +172,47 @@ class SeasonController extends Controller
         return view('seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches', 'currentRound', 'maxRound', 'champion', 'promotedTeams', 'relegatedTeams'));
     }
 
+    public function listMatches(Request $request)
+    {
+        $seasonId = $request->id;
+        $matchesByRound = DB::table('matches')->orderBy('round')
+            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
+            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name', 
+            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 
+            't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
+            ->where('season_id', $seasonId)
+            ->get()
+            ->groupBy('round');
+        return view('seasons.matches', compact('matchesByRound', 'seasonId'));
+    }
+    public function showStatistics(Request $request)
+    {
+        $sortBy = $request->get('sort_by', 'points');
+        $seasonId = $request->id;
+        $histories = DB::table('histories')->selectRaw("
+            team_id,
+            SUM(goal_scored) as goals_scored,
+            SUM(goal_conceded) as goals_conceded,
+            SUM(goal_scored - goal_conceded) as goal_difference,
+            SUM(average_possession) as possession,
+            SUM(foul) as fouls,
+            SUM(points) as points,
+            teams.name as team_name, teams.color_1 as team_c1, teams.color_2 as team_c2, teams.color_3 as team_c3
+        ")
+        ->join('teams', 'histories.team_id', '=', 'teams.id')
+        ->where('season_id', $seasonId)
+        ->groupBy('team_id')
+        ->orderBy($sortBy, 'desc')
+        ->get();
+    
+        return view('seasons.histories', compact('histories', 'sortBy', 'seasonId'));
+    }
+        
+
+
+
+    
     // Lưu season và phân chia teams
     public function store(Request $request)
     {
