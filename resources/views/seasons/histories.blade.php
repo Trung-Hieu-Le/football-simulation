@@ -28,18 +28,26 @@
               <thead>
                 <tr>
                   <th>Team</th>
-                  <th>Goals Scored</th>
-                  <th>Goals Conceded</th>
-                  <th>Goal Difference</th>
-                  <th>Possession</th>
-                  <th>Fouls</th>
-                  <th>Points</th>
+                  <th>Số trận</th>
+                  <th>Win</th>
+                  <th>Draw</th>
+                  <th>Lose</th>
+                  <th>GF</th>
+                  <th>GC</th>
+                  <th>GD</th>
+                  <th>Kiểm soát</th>
+                  <th>Lỗi</th>
+                  <th>Pts</th>
                 </tr>
               </thead>
               <tbody>
                 @foreach ($histories as $history)
                   <tr>
                     <td>{{ $history->team_name }}</td>
+                    <td>{{ $history->matches_played }}</td>
+                    <td>{{ $history->wins }}</td>
+                    <td>{{ $history->draws }}</td>
+                    <td>{{ $history->loses }}</td>
                     <td>{{ $history->goals_scored }}</td>
                     <td>{{ $history->goals_conceded }}</td>
                     <td>{{ $history->goal_difference }}</td>

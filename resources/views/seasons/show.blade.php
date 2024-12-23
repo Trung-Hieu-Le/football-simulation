@@ -94,11 +94,14 @@
                         <tr>
                             <th>#</th>
                             <th>Team</th>
-                            <th>Matches Played</th>
-                            <th>Goals Scored</th>
-                            <th>Goals Conceded</th>
-                            <th>Goal Difference</th>
-                            <th>Points</th>
+                            <th>Số trận</th>
+                            <th>Win</th>
+                            <th>Draw</th>
+                            <th>Lose</th>
+                            <th>GF</th>
+                            <th>GC</th>
+                            <th>GD</th>
+                            <th>Pts</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -137,6 +140,9 @@
                                     </div>
                                 </td>                                
                                 <td>{{ $team->match_played }}</td>
+                                <td>{{ $team->win }}</td>
+                                <td>{{ $team->draw }}</td>
+                                <td>{{ $team->lose }}</td>
                                 <td>{{ $team->goal_scored }}</td>
                                 <td>{{ $team->goal_conceded }}</td>
                                 <td>{{ $team->goal_difference }}</td>

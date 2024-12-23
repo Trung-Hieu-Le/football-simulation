@@ -17,6 +17,7 @@ class TeamController extends Controller
         ->selectRaw('*, (attack + defense + control + stamina + aggressive + penalty + form) as total') // Tính tổng cộng
         ->orderBy($sort, $direction)
         ->get();
+        
         $teamHistories = DB::table('histories')
         ->join('teams', 'teams.id', '=', 'histories.team_id')
         ->join('seasons', 'seasons.id', '=', 'histories.season_id')
@@ -31,6 +32,7 @@ class TeamController extends Controller
     {
         // Lấy thông tin đội bóng cần chỉnh sửa
         $team = DB::table('teams')->where('id', $id)->first();
+        
         return view('teams.edit', compact('team'));
     }
 
@@ -51,6 +53,7 @@ class TeamController extends Controller
         'color_1' => $request->color_1,
         'color_2' => $request->color_2,
         'color_3' => $request->color_3,
+        // 'shirt_type' => $request->shirt_type,
     ]);
 
     return redirect()->back()->with('success', 'Thông tin đội bóng đã được cập nhật!');

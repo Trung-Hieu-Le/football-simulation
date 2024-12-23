@@ -120,8 +120,17 @@ class SeasonController extends Controller
             ->where('matches.team2_score', '!=', null)
             ->where('matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
             ->where('matches.season_id', $id)
-            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name',
-            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
+            ->select(
+                'matches.*',
+                't1.name as team1_name',
+                't2.name as team2_name',
+                't1.color_1 as team1_c1',
+                't1.color_2 as team1_c2',
+                't1.color_3 as team1_c3',
+                't2.color_1 as team2_c1',
+                't2.color_2 as team2_c2',
+                't2.color_3 as team2_c3'
+            )
             ->get();
 
         // Lọc các trận đấu sắp tới
@@ -130,8 +139,17 @@ class SeasonController extends Controller
             ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
             ->where('matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
             ->where('matches.season_id', $id)
-            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name', 
-            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
+            ->select(
+                'matches.*',
+                't1.name as team1_name',
+                't2.name as team2_name',
+                't1.color_1 as team1_c1',
+                't1.color_2 as team1_c2',
+                't1.color_3 as team1_c3',
+                't2.color_1 as team2_c1',
+                't2.color_2 as team2_c2',
+                't2.color_3 as team2_c3'
+            )
             ->get();
 
         $champion = null;
@@ -178,9 +196,17 @@ class SeasonController extends Controller
         $matchesByRound = DB::table('matches')->orderBy('round')
             ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
             ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
-            ->select('matches.*', 't1.name as team1_name', 't2.name as team2_name', 
-            't1.color_1 as team1_c1', 't1.color_2 as team1_c2', 't1.color_3 as team1_c3', 
-            't2.color_1 as team2_c1', 't2.color_2 as team2_c2', 't2.color_3 as team2_c3')
+            ->select(
+                'matches.*',
+                't1.name as team1_name',
+                't2.name as team2_name',
+                't1.color_1 as team1_c1',
+                't1.color_2 as team1_c2',
+                't1.color_3 as team1_c3',
+                't2.color_1 as team2_c1',
+                't2.color_2 as team2_c2',
+                't2.color_3 as team2_c3'
+            )
             ->where('season_id', $seasonId)
             ->get()
             ->groupBy('round');
@@ -192,27 +218,31 @@ class SeasonController extends Controller
         $seasonId = $request->id;
         $histories = DB::table('histories')->selectRaw("
             team_id,
+            SUM(match_played) as matches_played,
             SUM(goal_scored) as goals_scored,
             SUM(goal_conceded) as goals_conceded,
             SUM(goal_scored - goal_conceded) as goal_difference,
             SUM(average_possession) as possession,
             SUM(foul) as fouls,
             SUM(points) as points,
+            SUM(win) as wins,
+            SUM(draw) as draws,
+            SUM(lose) as loses,
             teams.name as team_name, teams.color_1 as team_c1, teams.color_2 as team_c2, teams.color_3 as team_c3
         ")
-        ->join('teams', 'histories.team_id', '=', 'teams.id')
-        ->where('season_id', $seasonId)
-        ->groupBy('team_id')
-        ->orderBy($sortBy, 'desc')
-        ->get();
-    
+            ->join('teams', 'histories.team_id', '=', 'teams.id')
+            ->where('season_id', $seasonId)
+            ->groupBy('team_id')
+            ->orderBy($sortBy, 'desc')
+            ->get();
+
         return view('seasons.histories', compact('histories', 'sortBy', 'seasonId'));
     }
-        
 
 
 
-    
+
+
     // Lưu season và phân chia teams
     public function store(Request $request)
     {
@@ -275,6 +305,7 @@ class SeasonController extends Controller
         // Lọc các đội promoted và relegated
         $promotedTeams = $lastSeasonHistories->where('result', 'promoted');
         $relegatedTeams = $lastSeasonHistories->where('result', 'relegated');
+
         // Tạo mảng cho 3 tier
         $tier1 = [];
         $tier2 = [];
@@ -297,7 +328,21 @@ class SeasonController extends Controller
             }
         }
 
+        // Lấy danh sách các đội còn lại từ last season, không tính các đội promoted và relegated
+        $remainingTeams = $lastSeasonHistories->whereNotIn('team_id', $promotedTeams->pluck('team_id')->merge($relegatedTeams->pluck('team_id')));
+
         // Thêm các đội còn lại vào các tier theo thứ tự
+        foreach ($remainingTeams as $team) {
+            if (count($tier1) < $teamsCount / 3) {
+                $tier1[] = $team->team_id;
+            } elseif (count($tier2) < $teamsCount / 3) {
+                $tier2[] = $team->team_id;
+            } else {
+                $tier3[] = $team->team_id;
+            }
+        }
+
+        // Thêm các đội mới vào các tier nếu còn thiếu
         foreach ($teams as $team) {
             if (!in_array($team->id, $tier1) && !in_array($team->id, $tier2) && !in_array($team->id, $tier3)) {
                 if (count($tier1) < $teamsCount / 3) {
@@ -309,9 +354,6 @@ class SeasonController extends Controller
                 }
             }
         }
-        $tier1 = collect($tier1)->sort()->values()->toArray();
-        $tier2 = collect($tier2)->sort()->values()->toArray();
-        $tier3 = collect($tier3)->sort()->values()->toArray();
 
         // Cập nhật vào team_groups
         $tiers = [
@@ -370,29 +412,22 @@ class SeasonController extends Controller
     // Tạo lịch thi đấu Round Robin
     private function createMatches($seasonId)
     {
-        // Lấy tất cả các nhóm (tier) trong mùa giải
         $teamGroups = DB::table('team_groups')->where('season_id', $seasonId)->orderBy('tier', 'desc')->get();
 
-        // Khởi tạo mảng chứa các trận đấu
         $matches = [];
 
-        // Duyệt qua từng nhóm (tier) và xử lý theo tier
         foreach ($teamGroups as $group) {
             $teamIds = explode(',', $group->team_ids);
 
-            // Đảo ngược thứ tự đội trong nhóm (tier)
             $teamIds = array_reverse($teamIds);
-            // Tạo lịch thi đấu Round Robin cho mỗi nhóm đội
             $groupMatches = $this->generateGroupMatches($seasonId, $teamIds, $group->tier);
-            // dd($groupMatches);
-            // Thêm các trận đấu vào mảng matches
             $matches = array_merge($matches, $groupMatches);
         }
 
-        // Chèn tất cả các trận đấu vào bảng 'matches'
         usort($matches, function ($a, $b) {
             return $a['round'] <=> $b['round'];
         });
+
         DB::table('matches')->insert($matches);
     }
 

@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\MatchController;
-
+use App\Http\Controllers\StatisticController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +28,6 @@ Route::get('/seasons/{id}', [SeasonController::class, 'show'])->name('seasons.sh
 Route::delete('/seasons/{id}', [SeasonController::class, 'destroy'])->name('seasons.destroy');
 Route::get('/matches/{id}', [SeasonController::class, 'listMatches'])->name('matches.show');
 Route::get('/histories/{id}', [SeasonController::class, 'showStatistics'])->name('histories.show');
-
-
 Route::post('/seasons/simulate', [MatchController::class, 'simulateMatch'])->name('seasons.simulate');
+
+Route::get('/statistics', [StatisticController::class, 'index'])->name('statistics.index');

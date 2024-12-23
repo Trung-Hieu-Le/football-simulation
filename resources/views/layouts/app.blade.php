@@ -22,7 +22,7 @@
                         <a class="nav-link" href="/teams">List đội</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Thống kê</a>
+                        <a class="nav-link" href="/statistics">Thống kê</a>
                     </li>
                 </ul>
             </div>
