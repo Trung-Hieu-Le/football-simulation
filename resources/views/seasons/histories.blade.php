@@ -15,11 +15,11 @@
               <form method="GET" action="/histories/{{$seasonId}}">
                 <select name="sort_by" onchange="this.form.submit()">
                   <option value="points" {{ $sortBy == 'points' ? 'selected' : '' }}>Points</option>
-                  <option value="goals_scored" {{ $sortBy == 'goal_scored' ? 'selected' : '' }}>Goals Scored</option>
-                  <option value="goals_conceded" {{ $sortBy == 'goal_conceded' ? 'selected' : '' }}>Goals Conceded</option>
+                  <option value="goals_scored" {{ $sortBy == 'goals_scored' ? 'selected' : '' }}>Goals Scored</option>
+                  <option value="goals_conceded" {{ $sortBy == 'goals_conceded' ? 'selected' : '' }}>Goals Conceded</option>
                   <option value="goal_difference" {{ $sortBy == 'goal_difference' ? 'selected' : '' }}>Goal Difference</option>
-                  <option value="possession" {{ $sortBy == 'average_possession' ? 'selected' : '' }}>Possession</option>
-                  <option value="fouls" {{ $sortBy == 'foul' ? 'selected' : '' }}>Fouls</option>
+                  <option value="possession" {{ $sortBy == 'possession' ? 'selected' : '' }}>Possession</option>
+                  <option value="fouls" {{ $sortBy == 'fouls' ? 'selected' : '' }}>Fouls</option>
                 </select>
               </form>
             </div>

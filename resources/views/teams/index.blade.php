@@ -77,7 +77,7 @@
                     <td>{{ $team->aggressive }}</td>
                     <td>{{ $team->penalty }}</td> 
                     <td>{{ $team->form }}</td>
-                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->aggressive+$team->penalty+$team->form }}</td>
+                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->aggressive+$team->penalty }}</td>
 
                     {{-- <td>
                         <div style="display: flex;">

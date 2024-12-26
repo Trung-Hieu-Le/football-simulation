@@ -182,7 +182,13 @@
             <form action="{{ route('seasons.simulate') }}" method="POST">
                 @csrf
                 <input type="hidden" name="season_id" value="{{ $season->id }}">
-                <button type="submit" class="btn btn-primary">Next Match</button>
+                <div class="row">
+                    <label for="match_count" class="form-label">Số trận đấu muốn giả lập:</label>
+                    <div class="col-6">
+                        <input type="number" id="match_count" name="match_count" class="form-control" value="1" min="1" max="12" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary col-6">Next Match</button>
+                </div>
             </form>
 
             <h3>Next Matches</h3>

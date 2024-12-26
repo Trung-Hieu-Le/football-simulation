@@ -10,7 +10,7 @@ class TeamController extends Controller
 
     public function index(Request $request)
     {
-        $sort = $request->input('sort', 'name'); // Cột sắp xếp, mặc định là 'name'
+        $sort = $request->input('sort', 'id'); // Cột sắp xếp, mặc định là 'name'
         $direction = $request->input('direction', 'asc');  // Hướng sắp xếp, mặc định là 'asc'
         // Lấy tất cả các đội bóng
         $teams = DB::table('teams')
