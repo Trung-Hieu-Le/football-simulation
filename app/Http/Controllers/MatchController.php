@@ -34,11 +34,13 @@ class MatchController extends Controller
             for ($half = 1; $half <= 2; $half++) {
                 $currentTeam = rand(1, 2); // Team bắt đầu hiệp
                 $time = ($half == 1) ? 0 : 45; // Thời gian bắt đầu hiệp
-
+            
                 $staminaFactor1 = ($half == 2) ? $team1->stamina / 100 : 1;
                 $staminaFactor2 = ($half == 2) ? $team2->stamina / 100 : 1;
                 $formFactor1 = 1 + ($team1->form / 200);
                 $formFactor2 = 1 + ($team2->form / 200);
+                
+                // Nhân các chỉ số với formFactor
                 $team1_attack = $team1->attack * $formFactor1;
                 $team2_attack = $team2->attack * $formFactor2;
                 $team1_defense = $team1->defense * $formFactor1;
@@ -49,6 +51,8 @@ class MatchController extends Controller
                 $team2_aggressive = $team2->aggressive * $formFactor2;
                 $team1_penalty = $team1->penalty * $formFactor1;
                 $team2_penalty = $team2->penalty * $formFactor2;
+            
+                // Nếu là hiệp 2, nhân thêm với staminaFactor
                 if ($half == 2) {
                     $team1_attack *= $staminaFactor1;
                     $team2_attack *= $staminaFactor2;
@@ -61,35 +65,37 @@ class MatchController extends Controller
                     $team1_penalty *= $staminaFactor1;
                     $team2_penalty *= $staminaFactor2;
                 }
+            
                 for ($i = 0; $i < 45; $i++) { // Mỗi hiệp 45 lần xử lý
                     $time += 1;
+                    
                     if ($currentTeam == 1) {
                         $team1_possession++;
                     } else {
                         $team2_possession++;
                     }
-
+            
                     $state = rand(0, 80);
-
+            
                     if ($state <= 50) { // "Ưu thế"
-                        if (rand(1, 100) <= 60 * ($currentTeam == 1 ? $team1->control : $team2->control) / ($currentTeam == 2 ? $team1->control : $team2->control)) {
+                        if (rand(1, 100) <= 60 * ($currentTeam == 1 ? $team1_control : $team2_control) / ($currentTeam == 2 ? $team1_control : $team2_control)) {
                             $state = 70; // Sang "Cơ hội"
                         } else {
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng
                         }
                     }
-
+            
                     if ($state > 50 && $state <= 80) { // "Cơ hội"
-                        if (rand(1, 100) <= 50 * ($currentTeam == 1 ? $team1->attack + $team1->control : $team2->attack + $team2->control) / ($currentTeam == 2 ? $team1->defense + $team1->control : $team2->defense + $team2->control)) {
+                        if (rand(1, 100) <= 50 * ($currentTeam == 1 ? $team1_attack + $team1_control : $team2_attack + $team2_control) / ($currentTeam == 2 ? $team1_defense + $team1_control : $team2_defense + $team2_control)) {
                             $state = 90; // Sang "Nguy hiểm"
                         } else {
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng
                         }
                     }
-
+            
                     if ($state > 80 && $state < 100) { // "Nguy hiểm"
-                        if (rand(1, 100) <= 40 * ($currentTeam == 1 ? $team1->attack : $team2->attack) / ($currentTeam == 2 ? $team1->defense : $team2->defense)) {
-                            if (rand(1, 100) <= 100 * ($currentTeam == 1 ? $team2->aggressive : $team1->aggressive) / 100) {
+                        if (rand(1, 100) <= 40 * ($currentTeam == 1 ? $team1_attack : $team2_attack) / ($currentTeam == 2 ? $team1_defense : $team2_defense)) {
+                            if (rand(1, 100) <= 100 * ($currentTeam == 1 ? $team2_aggressive : $team1_aggressive) / 100) {
                                 $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
                             } else {
                                 if ($currentTeam == 1) {
@@ -111,10 +117,9 @@ class MatchController extends Controller
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
                         }
                     }
-
+            
                     if ($state == 100) { // "Thành bàn"
-                        if (rand(1, 100) <= 20 * ($currentTeam == 1 ? $team1->attack : $team2->attack) / ($currentTeam == 2 ? $team1->defense : $team2->defense)) { // Tăng tỉ lệ goal ghi bàn
-                            // dd($currentTeam, 10 * ($currentTeam == 1 ? $team1->attack : $team2->attack) / ($currentTeam == 2 ? $team1->defense : $team2->defense));
+                        if (rand(1, 100) <= 20 * ($currentTeam == 1 ? $team1_attack : $team2_attack) / ($currentTeam == 2 ? $team1_defense : $team2_defense)) { // Tăng tỉ lệ goal ghi bàn
                             if ($currentTeam == 1) {
                                 $team1_score++;
                                 $dangerousSituations[] = "$time': Goal by $team1->name";
@@ -124,13 +129,13 @@ class MatchController extends Controller
                             }
                             $currentTeam = 3 - $currentTeam; // Đội kia bắt đầu lại từ "Ưu thế"
                         } else {
-                            if (rand(1, 100) <= 70 * ($currentTeam == 1 ? $team2->aggressive : $team1->aggressive) / 100) {
+                            if (rand(1, 100) <= 70 * ($currentTeam == 1 ? $team2_aggressive : $team1_aggressive) / 100) {
                                 if ($currentTeam == 1) {
                                     if (rand(1, 100) <= 30) {
                                         $team2_fouls++;
                                         $dangerousSituations[] = "$time': Foul by $team2->name (Penalty)";
                                     }
-                                    if (rand(1, 100) <= 20 * $team1->penalty / $team2->penalty) {
+                                    if (rand(1, 100) <= 20 * $team1_penalty / $team2_penalty) {
                                         $team1_score++;
                                         $dangerousSituations[] = "$time': Penalty Goal by $team1->name (P)";
                                     }
@@ -139,7 +144,7 @@ class MatchController extends Controller
                                         $team1_fouls++;
                                         $dangerousSituations[] = "$time': Foul by $team1->name (Penalty)";
                                     }
-                                    if (rand(1, 100) <= 20 * $team2->penalty / $team1->penalty) {
+                                    if (rand(1, 100) <= 20 * $team2_penalty / $team1_penalty) {
                                         $team2_score++;
                                         $dangerousSituations[] = "$time': Penalty Goal by $team2->name (P)";
                                     }
@@ -151,6 +156,7 @@ class MatchController extends Controller
                     }
                 }
             }
+            
 
             $team1_possession = round($team1_possession, 2);
             $team2_possession = 100 - $team1_possession;
