@@ -14,7 +14,7 @@ class TeamController extends Controller
         $direction = $request->input('direction', 'asc');  // Hướng sắp xếp, mặc định là 'asc'
         // Lấy tất cả các đội bóng
         $teams = DB::table('teams')
-        ->selectRaw('*, (attack + defense + control + stamina + aggressive + penalty + form) as total') // Tính tổng cộng
+        ->selectRaw('*, (attack + defense + control + stamina + aggressive + penalty) as total') // Tính tổng cộng
         ->orderBy($sort, $direction)
         ->get();
         

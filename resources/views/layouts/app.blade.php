@@ -9,7 +9,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="position: sticky; top:0; z-index: 100">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url('/leagues') }}">League Simulation</a>
+            <a class="navbar-brand" href="/seasons">League Simulation</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -29,7 +29,7 @@
         </div>
     </nav>
     
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
         @yield('content')
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -11,7 +11,7 @@ class SeasonController extends Controller
     public function index()
     {
         // Lấy danh sách các mùa giải
-        $seasons = DB::table('seasons')->get();
+        $seasons = DB::table('seasons')->orderBy('season', 'desc')->get();
 
         // Thêm thông tin tỷ lệ trận và vòng vào từng season
         $seasons = $seasons->map(function ($season) {
@@ -250,9 +250,13 @@ class SeasonController extends Controller
             return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 12.']);
         }
 
+        $metaOptions = ['attack', 'defense', 'control', 'aggressive', 'stamina', 'penalty'];
+        $meta = $request->meta ?: $metaOptions[array_rand($metaOptions)]; // Nếu không chọn thì lấy random
+
         $seasonId = DB::table('seasons')->insertGetId([
             'season' => $request->season,
-            'teams_count' => $request->teams_count
+            'teams_count' => $request->teams_count,
+            'meta' => $meta,
         ]);
 
         $this->assignTeamsToTiers($seasonId, $request->teams_count);

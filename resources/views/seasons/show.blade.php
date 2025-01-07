@@ -41,7 +41,7 @@
 
 </style>
 @section('content')
-<div class="container">
+<div class="container-fluid">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/seasons/{{$season->id}}">Bảng Xếp Hạng</a></li>
@@ -61,19 +61,30 @@
                 <div class="scoreboard h2">
                     {{ $matchResult['team1_name'] }} &nbsp; {{ $matchResult['team1_score'] }} - {{ $matchResult['team2_score'] }} &nbsp; {{ $matchResult['team2_name'] }}
                 </div>
-    
-                <div class="situations fst-italic lh-1">
+                <div class="stats row mt-4">
+                    <div class="col-6 text-end">
+                        <p>Possession: {{ $matchResult['team1_possession'] }}%</p>
+                        <p>Shots: {{ $matchResult['team1_shots'] }}</p>
+                        <p>Shots on Target: {{ $matchResult['team1_shots_on_target'] }}</p>
+                    </div>
+                    <div class="col-6 text-start">
+                        <p>Possession: {{ $matchResult['team2_possession'] }}%</p>
+                        <p>Shots: {{ $matchResult['team2_shots'] }}</p>
+                        <p>Shots on Target: {{ $matchResult['team2_shots_on_target'] }}</p>
+                    </div>
+                </div>
+                <div class="situations fst-italic fs-6 lh-1 mb-2">
                     <div class="situation-left">
                         @foreach ($matchResult['dangerousSituations'] as $situation)
                             @if (str_contains($situation, $matchResult['team1_name']))
-                                <p>{{ $situation }}</p>
+                                <p class="mb-0">{{ $situation }}</p>
                             @endif
                         @endforeach
                     </div>
                     <div class="situation-right">
                         @foreach ($matchResult['dangerousSituations'] as $situation)
                             @if (str_contains($situation, $matchResult['team2_name']))
-                                <p>{{ $situation }}</p>
+                                <p class="mb-0">{{ $situation }}</p>
                             @endif
                         @endforeach
                     </div>
@@ -185,7 +196,7 @@
                 <div class="row">
                     <label for="match_count" class="form-label">Số trận đấu muốn giả lập:</label>
                     <div class="col-6">
-                        <input type="number" id="match_count" name="match_count" class="form-control" value="1" min="1" max="12" required>
+                        <input type="number" id="match_count" name="match_count" class="form-control" value="1" min="1" max="48" required>
                     </div>
                     <button type="submit" class="btn btn-primary col-6">Next Match</button>
                 </div>
@@ -195,15 +206,17 @@
             <table class="table table-centered">
                 <thead>
                     <tr>
-                        <th>Round</th>
+                        <th>#</th>
+                        <th>Rnd</th>
                         <th>Team 1</th>
                         <th>Score</th>
                         <th>team 2</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($nextMatches as $match)
+                    @foreach ($nextMatches as $index => $match)
                         <tr>
+                            <td>{{ $index+1 }}</td>
                             <td>{{ $match->round }}</td>
                             <td>
                                 <div style="background: linear-gradient(to right, {{ $match->team1_c1 }} 60%, {{ $match->team1_c2 }} 40%);
@@ -235,15 +248,17 @@
             <table class="table table-centered">
                 <thead>
                     <tr>
-                        <th>Round</th>
+                        <th>#</th>
+                        <th>Rnd</th>
                         <th>Team 1</th>
                         <th>Score</th>
                         <th>team 2</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($completedMatches as $match)
+                    @foreach ($completedMatches as $index => $match)
                         <tr>
+                            <td>{{ $index+1 }}</td>
                             <td>{{ $match->round }}</td>
                             <td>
                                 <div style="background: linear-gradient(to right, {{ $match->team1_c1 }} 60%, {{ $match->team1_c2 }} 40%);

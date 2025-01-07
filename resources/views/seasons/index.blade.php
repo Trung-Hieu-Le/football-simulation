@@ -6,8 +6,9 @@
     <table class="table">
         <thead>
             <tr>
-                <th>ID</th>
+                {{-- <th>ID</th> --}}
                 <th>Season</th>
+                <th>Meta</th>
                 <th>Số đội</th>
                 <th>Tỷ lệ trận đã hoàn thành (%)</th>
                 <th>Vòng hiện tại / Tổng vòng</th>
@@ -17,8 +18,9 @@
         <tbody>
             @foreach ($seasons as $season)
                 <tr>
-                    <td>{{ $season->id }}</td>
+                    {{-- <td>{{ $season->id }}</td> --}}
                     <td>{{ $season->season }}</td>
+                    <th>{{ $season->meta }}</th>
                     <td>{{ $season->teams_count }}</td>
                     <td>{{ $season->match_completion_rate }}%</td>
                     <td>{{ $season->current_round }} / {{ $season->max_round }}</td>

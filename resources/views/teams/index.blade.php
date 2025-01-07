@@ -35,7 +35,7 @@
                     <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Tinh thần
+                    Tranh chấp
                     <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'asc']) }}">⬆️</a>
                     <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
@@ -173,7 +173,7 @@
                                     <input type="number" class="form-control" name="stamina" value="{{ $team->stamina }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="speed" class="form-label">Tinh thần</label>
+                                    <label for="speed" class="form-label">Tranh chấp</label>
                                     <input type="number" class="form-control" name="aggressive" value="{{ $team->aggressive }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
