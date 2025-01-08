@@ -41,16 +41,16 @@ class SeasonController extends Controller
                 ->value('round');
 
             $maxRound = floor($season->teams_count / 3) - 1;
-            $currentRound = $currentRound ?? $maxRound + 1;
+            $currentRound = $currentRound ?? $maxRound;
 
             // Tính tỷ lệ vòng hiện tại so với tối đa
-            $roundRate = $currentRound > 0 ? ($currentRound / ($maxRound + 1)) * 100 : 0;
+            $roundRate = $currentRound > 0 ? ($currentRound / ($maxRound)) * 100 : 0;
 
             // Gắn thêm thông tin vào season
             $season->match_completion_rate = round($matchCompletionRate, 2);
             $season->round_rate = round($roundRate, 2);
             $season->current_round = $currentRound;
-            $season->max_round = $maxRound + 1;
+            $season->max_round = $maxRound;
 
             return $season;
         });

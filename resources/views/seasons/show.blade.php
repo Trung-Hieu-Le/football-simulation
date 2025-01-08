@@ -50,7 +50,7 @@
         </ol>
     </nav>
       
-    <h1>Mùa giải: {{ $season->season }}</h1>
+    <h1>Mùa giải: {{ $season->season }} (meta {{ $season->meta }}) </h1>
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
