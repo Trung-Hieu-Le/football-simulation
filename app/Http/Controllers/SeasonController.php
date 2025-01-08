@@ -309,7 +309,7 @@ class SeasonController extends Controller
         // Lọc các đội promoted và relegated
         $promotedTeams = $lastSeasonHistories->where('result', 'promoted');
         $relegatedTeams = $lastSeasonHistories->where('result', 'relegated');
-
+        // dd($promotedTeams, $relegatedTeams);
         // Tạo mảng cho 3 tier
         $tier1 = [];
         $tier2 = [];

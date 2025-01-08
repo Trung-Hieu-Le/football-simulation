@@ -196,7 +196,7 @@
                 <div class="row">
                     <label for="match_count" class="form-label">Số trận đấu muốn giả lập:</label>
                     <div class="col-6">
-                        <input type="number" id="match_count" name="match_count" class="form-control" value="1" min="1" max="48" required>
+                        <input type="number" id="match_count" name="match_count" class="form-control" value="1" min="1" max="96" required>
                     </div>
                     <button type="submit" class="btn btn-primary col-6">Next Match</button>
                 </div>
