@@ -42,13 +42,13 @@ class MatchController extends Controller
 
                 $staminaFactor1 = ($half == 2) ? 0.5 + ($team1->stamina / 200) : 1;
                 $staminaFactor2 = ($half == 2) ? 0.5 + ($team2->stamina / 200) : 1;
-                $formFactor1 = 1 + ($team1->form / 500);
-                $formFactor2 = 1 + ($team2->form / 500);
+                $formFactor1 = 1 + ($team1->form / 1000);
+                $formFactor2 = 1 + ($team2->form / 1000);
 
                 // Nhân các chỉ số với formFactor
                 // Hệ số theo meta
-                $metaFactor = 1.05;
-                $nonMetaFactor = 0.95;
+                $metaFactor = 1.1;
+                $nonMetaFactor = 0.9;
                 $team1_attack = $team1->attack * $formFactor1;
                 $team2_attack = $team2->attack * $formFactor2;
                 $team1_defense = $team1->defense * $formFactor1;
@@ -64,13 +64,9 @@ class MatchController extends Controller
                 if ($season_meta == 'attack') {
                     $team1_attack = $team1_attack * $metaFactor;
                     $team2_attack = $team2_attack * $metaFactor;
-                    $team1_defense = $team1_defense * $nonMetaFactor;
-                    $team2_defense = $team2_defense * $nonMetaFactor;
                 } elseif ($season_meta == 'defense') {
                     $team1_defense = $team1_defense * $metaFactor;
                     $team2_defense = $team2_defense * $metaFactor;
-                    $team1_attack = $team1_attack * $nonMetaFactor;
-                    $team2_attack = $team2_attack * $nonMetaFactor;
                 } elseif ($season_meta == 'control') {
                     $team1_control = $team1_control * $metaFactor;
                     $team2_control = $team2_control * $metaFactor;
@@ -79,8 +75,8 @@ class MatchController extends Controller
                 } elseif ($season_meta == 'aggressive') {
                     $team1_aggressive = $team1_aggressive * $metaFactor;
                     $team2_aggressive = $team2_aggressive * $metaFactor;
-                    $staminaFactor1 = $staminaFactor1 * $nonMetaFactor;
-                    $staminaFactor2 = $staminaFactor2 * $nonMetaFactor;
+                    $team1_defense = $team1_defense * $nonMetaFactor;
+                    $team2_defense = $team2_defense * $nonMetaFactor;
                 } elseif ($season_meta == 'penalty') {
                     $team1_penalty = $team1_penalty * 2;
                     $team2_penalty = $team2_penalty * 2;
@@ -407,7 +403,7 @@ class MatchController extends Controller
         }
 
         $form = DB::table('teams')->where('id', $teamId)->value('form');
-        $form = max(0, min(100, $form));
+        $form = max(5, min(100, $form));
         DB::table('teams')->where('id', $teamId)->update(['form' => $form]);
 
         DB::table('histories')->updateOrInsert(
