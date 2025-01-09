@@ -173,8 +173,8 @@ class MatchController extends Controller
                             $team1_defense_chance = rand(0, 70) * $team1_defense;
                         }
                         $long_shot_chance = rand(1, 1000);
-                        $long_shot_threshold_team1 = $team1_total < $team2_total ? 15 : 1; // 5% cho đội yếu hơn, 1% cho đội mạnh hơn
-                        $long_shot_threshold_team2 = $team2_total < $team1_total ? 15 : 1;
+                        $long_shot_threshold_team1 = $team1_total < $team2_total ? 10 : 1; // 5% cho đội yếu hơn, 1% cho đội mạnh hơn
+                        $long_shot_threshold_team2 = $team2_total < $team1_total ? 10 : 1;
 
                         if ($long_shot_chance <= $long_shot_threshold_team1 && $currentTeam == 1) {
                             $team1_score++;
