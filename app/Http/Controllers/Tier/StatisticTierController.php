@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Tier;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 
-class StatisticController extends Controller
+class StatisticTierController extends Controller
 {
     public function index()
     {
@@ -159,6 +160,6 @@ class StatisticController extends Controller
             ->get();
 
 
-        return view('statistics.index', compact('topTeams', 'champions', 'statistics', 'topWinTeams', 'topDrawTeams', 'topLoseTeams', 'highestStatsNoChampion', 'lowestStatsChampion'));
+        return view('tier.statistics.index', compact('topTeams', 'champions', 'statistics', 'topWinTeams', 'topDrawTeams', 'topLoseTeams', 'highestStatsNoChampion', 'lowestStatsChampion'));
     }
 }

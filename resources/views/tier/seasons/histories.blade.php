@@ -1,18 +1,18 @@
-@extends('layouts.app')
+@extends('tier.layouts.app')
 
 @section('content')
 <div class="container">
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="/seasons/{{$seasonId}}">Bảng Xếp Hạng</a></li>
-      <li class="breadcrumb-item"><a href="/matches/{{$seasonId}}">Lịch Thi Đấu</a></li>
-      <li class="breadcrumb-item"><a href="/histories/{{$seasonId}}">Thống Kê Mùa Giải</a></li>
+      <li class="breadcrumb-item"><a href="/tier/seasons/{{$seasonId}}">Bảng Xếp Hạng</a></li>
+      <li class="breadcrumb-item"><a href="/tier/matches/{{$seasonId}}">Lịch Thi Đấu</a></li>
+      <li class="breadcrumb-item"><a href="/tier/histories/{{$seasonId}}">Thống Kê Mùa Giải</a></li>
     </ol>
   </nav>
       <h1>Histories</h1>
       <div>
           <div>
-              <form method="GET" action="/histories/{{$seasonId}}">
+              <form method="GET" action="/tier/histories/{{$seasonId}}">
                 <select name="sort_by" onchange="this.form.submit()">
                   <option value="points" {{ $sortBy == 'points' ? 'selected' : '' }}>Points</option>
                   <option value="goals_scored" {{ $sortBy == 'goals_scored' ? 'selected' : '' }}>Goals Scored</option>

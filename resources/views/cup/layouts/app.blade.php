@@ -9,20 +9,20 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="position: sticky; top:0; z-index: 100">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/seasons">League Simulation</a>
+            <a class="navbar-brand" href="/cup/seasons">League Simulation</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="/seasons">List mùa giải</a>
+                        <a class="nav-link" href="/cup/seasons">List mùa giải</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/teams">List đội</a>
+                        <a class="nav-link" href="/cup/teams">List đội</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/statistics">Thống kê</a>
+                        <a class="nav-link" href="/cup/statistics">Thống kê</a>
                     </li>
                 </ul>
             </div>

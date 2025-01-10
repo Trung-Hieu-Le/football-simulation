@@ -1,12 +1,12 @@
-@extends('layouts.app')
+@extends('cup.layouts.app')
 
 @section('content')
 <div class="container">
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="/seasons/{{$seasonId}}">Bảng Xếp Hạng</a></li>
-      <li class="breadcrumb-item"><a href="/matches/{{$seasonId}}">Lịch Thi Đấu</a></li>
-      <li class="breadcrumb-item"><a href="/histories/{{$seasonId}}">Thống Kê Mùa Giải</a></li>
+      <li class="breadcrumb-item"><a href="/cup/seasons/{{$seasonId}}">Bảng Xếp Hạng</a></li>
+      <li class="breadcrumb-item"><a href="/cup/matches/{{$seasonId}}">Lịch Thi Đấu</a></li>
+      <li class="breadcrumb-item"><a href="/cup/histories/{{$seasonId}}">Thống Kê Mùa Giải</a></li>
     </ol>
   </nav>
       <h1>Matches</h1>

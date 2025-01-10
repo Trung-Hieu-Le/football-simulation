@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('tier.layouts.app')
 <style>
     .scoreboard {
     text-align: center;
@@ -44,9 +44,9 @@
 <div class="container-fluid">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/seasons/{{$season->id}}">Bảng Xếp Hạng</a></li>
-          <li class="breadcrumb-item"><a href="/matches/{{$season->id}}">Lịch Thi Đấu</a></li>
-          <li class="breadcrumb-item"><a href="/histories/{{$season->id}}">Thống Kê Mùa Giải</a></li>
+          <li class="breadcrumb-item"><a href="/tier/seasons/{{$season->id}}">Bảng Xếp Hạng</a></li>
+          <li class="breadcrumb-item"><a href="/tier/matches/{{$season->id}}">Lịch Thi Đấu</a></li>
+          <li class="breadcrumb-item"><a href="/tier/histories/{{$season->id}}">Thống Kê Mùa Giải</a></li>
         </ol>
     </nav>
       

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('tier.layouts.app')
 
 @section('content')
     <h1>Create New Season</h1>
@@ -9,8 +9,8 @@
             <input type="number" class="form-control" id="season" name="season" value="{{ $nextSeason }}" required>
         </div>
         <div class="form-group">
-            <label for="teams_count">Number of Teams (must be divisible by 12)</label>
-            <input type="number" class="form-control" id="teams_count" name="teams_count" value="{{ $nextTeamsCount }}" required min="12" max="60" step="12">
+            <label for="teams_count">Number of Teams (32 or 64)</label>
+            <input type="number" class="form-control" id="teams_count" name="teams_count" value="{{ $nextTeamsCount }}" required min="32" max="64" step="32">
         </div>
         <div class="form-group">
             <label for="meta">Meta</label>

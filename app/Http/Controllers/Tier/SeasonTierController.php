@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Tier;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 
-class SeasonController extends Controller
+class SeasonTierController extends Controller
 {
     // Danh sách seasons
     public function index()
@@ -55,7 +56,7 @@ class SeasonController extends Controller
             return $season;
         });
 
-        return view('seasons.index', compact('seasons'));
+        return view('tier.seasons.index', compact('seasons'));
     }
 
 
@@ -76,9 +77,9 @@ class SeasonController extends Controller
         $lastSeason = DB::table('seasons')->orderBy('id', 'desc')->first();
 
         $nextSeason = $lastSeason ? $lastSeason->season + 1 : 1;
-        $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 12;
+        $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 64;
 
-        return view('seasons.create', compact('nextSeason', 'nextTeamsCount'));
+        return view('tier.seasons.create', compact('nextSeason', 'nextTeamsCount'));
     }
 
 
@@ -187,7 +188,7 @@ class SeasonController extends Controller
             }
         }
 
-        return view('seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches', 'currentRound', 'maxRound', 'champion', 'promotedTeams', 'relegatedTeams'));
+        return view('tier.seasons.show', compact('season', 'groupStandings', 'completedMatches', 'nextMatches', 'currentRound', 'maxRound', 'champion', 'promotedTeams', 'relegatedTeams'));
     }
 
     public function listMatches(Request $request)
@@ -210,7 +211,7 @@ class SeasonController extends Controller
             ->where('season_id', $seasonId)
             ->get()
             ->groupBy('round');
-        return view('seasons.matches', compact('matchesByRound', 'seasonId'));
+        return view('tier.seasons.matches', compact('matchesByRound', 'seasonId'));
     }
     public function showStatistics(Request $request)
     {
@@ -236,7 +237,7 @@ class SeasonController extends Controller
             ->orderBy($sortBy, 'desc')
             ->get();
 
-        return view('seasons.histories', compact('histories', 'sortBy', 'seasonId'));
+        return view('tier.seasons.histories', compact('histories', 'sortBy', 'seasonId'));
     }
 
 

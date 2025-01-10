@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Cup;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 
-class TeamController extends Controller
+class TeamCupController extends Controller
 {
 
     public function index(Request $request)
@@ -18,14 +19,14 @@ class TeamController extends Controller
         ->orderBy($sort, $direction)
         ->get();
         
-        $teamHistories = DB::table('histories')
-        ->join('teams', 'teams.id', '=', 'histories.team_id')
-        ->join('seasons', 'seasons.id', '=', 'histories.season_id')
-        ->select('histories.*', 'teams.name as team_name', 'seasons.season')
+        $teamHistories = DB::table('group_stage_standings')
+        ->join('teams', 'teams.id', '=', 'group_stage_standings.team_id')
+        ->join('seasons', 'seasons.id', '=', 'group_stage_standings.season_id')
+        ->select('group_stage_standings.*', 'teams.name as team_name', 'seasons.season')
         ->get();
         $regions = DB::table('regions')->get();
 
-        return view('teams.index', compact('teams', 'teamHistories', 'regions'));
+        return view('cup.teams.index', compact('teams', 'teamHistories', 'regions'));
     }
 
     public function edit($id)
