@@ -60,17 +60,26 @@ class TeamCupController extends Controller
     return redirect()->back()->with('success', 'Thông tin đội bóng đã được cập nhật!');
 }
 
-
-    public function history($id)
+public function resetForm()
     {
-        // Lấy lịch sử của đội bóng
-        $team = DB::table('teams')->where('id', $id)->first();
-        $histories = DB::table('histories')
-            ->where('team_id', $id)
-            ->join('seasons', 'seasons.id', '=', 'histories.season_id')
-            ->select('histories.*', 'seasons.season')
-            ->get();
+        // Cập nhật tất cả các team, đặt các trường về 50
+        DB::table('teams')->update([
+            'form' => 50
+        ]);
 
-        return view('teams.history', compact('team', 'histories'));
+        // Thông báo thành công
+        return redirect()->back()->with('success', 'All teams updated successfully!');
     }
+    // public function history($id)
+    // {
+    //     // Lấy lịch sử của đội bóng
+    //     $team = DB::table('teams')->where('id', $id)->first();
+    //     $histories = DB::table('histories')
+    //         ->where('team_id', $id)
+    //         ->join('seasons', 'seasons.id', '=', 'histories.season_id')
+    //         ->select('histories.*', 'seasons.season')
+    //         ->get();
+
+    //     return view('teams.history', compact('team', 'histories'));
+    // }
 }

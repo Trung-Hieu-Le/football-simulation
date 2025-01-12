@@ -5,7 +5,7 @@
     <div class="row">
         <!-- Left Column -->
         <!-- Top Teams Table -->
-        <div class="col-7 col-md-12 col-sm-12">
+        <div class="col-7 col-lg-8 col-md-12 col-sm-12">
             <h3>Top Teams</h3>
             <table class="table table-bordered">
                 <thead>
@@ -40,7 +40,7 @@
 
 
         <!-- Right Column -->
-        <div class="col-5 col-md-12 col-sm-12">
+        <div class="col-5 col-lg-4 col-md-12 col-sm-12">
             <h3>Champions (All Seasons)</h3>
             <table class="table">
                 <thead>

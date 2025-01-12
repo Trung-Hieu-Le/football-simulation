@@ -1,6 +1,15 @@
 @extends('cup.layouts.app')
 
 @section('content')
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/cup/eliminate/view/{{ $season->id }}">Bảng Xếp Hạng</a></li>
+            <li class="breadcrumb-item"><a href="/cup/eliminate/statistics/{{ $season->id }}">Thống Kê Mùa Giải</a></li>
+        </ol>
+    </nav>
+</div>
+
 <div class="container-fluid row">
     <h1>Mùa giải: {{ $season->season }} (meta {{ $season->meta }}) </h1> 
     @if (session('success'))

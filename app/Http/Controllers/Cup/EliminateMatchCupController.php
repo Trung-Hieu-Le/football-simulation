@@ -19,12 +19,18 @@ class EliminateMatchCupController extends Controller
             ->whereNull('team2_score')
             ->limit($match_count)
             ->get();
+        
+        if($nextMatches->isEmpty()) {
+            return redirect()->back()->with('fail', 'No match to simulate!');
+        }
 
         $dangerousSituations = [];
         foreach ($nextMatches as $match) {
             $team1 = DB::table('teams')->where('id', $match->team1_id)->first();
             $team2 = DB::table('teams')->where('id', $match->team2_id)->first();
-
+            if (!$team1 || !$team2) {
+                return redirect()->back()->with('fail', 'Team not found!');
+            }
             $team1_score = 0;
             $team2_score = 0;
             $team1_fouls = 0;
@@ -71,25 +77,15 @@ class EliminateMatchCupController extends Controller
                 } elseif ($season_meta == 'control') {
                     $team1_control = $team1_control * $metaFactor;
                     $team2_control = $team2_control * $metaFactor;
-                    $team1_attack = $team1_attack * $nonMetaFactor;
-                    $team2_attack = $team2_attack * $nonMetaFactor;
                 } elseif ($season_meta == 'aggressive') {
                     $team1_aggressive = $team1_aggressive * $metaFactor;
                     $team2_aggressive = $team2_aggressive * $metaFactor;
-                    $team1_defense = $team1_defense * $nonMetaFactor;
-                    $team2_defense = $team2_defense * $nonMetaFactor;
                 } elseif ($season_meta == 'penalty') {
                     $team1_penalty = $team1_penalty * 2;
                     $team2_penalty = $team2_penalty * 2;
-                    $team1_attack = $team1_attack * $nonMetaFactor;
-                    $team2_attack = $team2_attack * $nonMetaFactor;
-                    $team1_defense = $team1_defense * $metaFactor;
-                    $team2_defense = $team2_defense * $metaFactor;
                     $team1_aggressive = $team1_aggressive * $nonMetaFactor;
                     $team2_aggressive = $team2_aggressive * $nonMetaFactor;
                 } elseif ($season_meta == 'stamina') {
-                    $staminaFactor1 = $staminaFactor1 * $metaFactor;
-                    $staminaFactor2 = $staminaFactor2 * $metaFactor;
                     $team1_control = $team1_control * $metaFactor;
                     $team2_control = $team2_control * $metaFactor;
                     $team1_attack = $team1_attack * $nonMetaFactor;
@@ -137,7 +133,7 @@ class EliminateMatchCupController extends Controller
                             $state = 70; // Sang "Cơ hội"
                         } else {
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng
-                            $state = rand(50, 100);
+                            $state = rand(50, 95);
                         }
                     }
 
@@ -157,7 +153,7 @@ class EliminateMatchCupController extends Controller
                             $state = 90; // Sang "Nguy hiểm"
                         } else {
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng
-                            $state = rand(80, 100);
+                            $state = rand(80, 95);
                         }
                     }
 
@@ -174,8 +170,8 @@ class EliminateMatchCupController extends Controller
                             $team1_defense_chance = rand(0, 70) * $team1_defense;
                         }
                         $long_shot_chance = rand(1, 1000);
-                        $long_shot_threshold_team1 = $team1_total < $team2_total ? 5 : 1; // 5% cho đội yếu hơn, 1% cho đội mạnh hơn
-                        $long_shot_threshold_team2 = $team2_total < $team1_total ? 5 : 1;
+                        $long_shot_threshold_team1 = $team1_total < $team2_total ? 3 : 1; // 5% cho đội yếu hơn, 1% cho đội mạnh hơn
+                        $long_shot_threshold_team2 = $team2_total < $team1_total ? 3 : 1;
 
                         if ($long_shot_chance <= $long_shot_threshold_team1 && $currentTeam == 1) {
                             $team1_score++;
@@ -199,7 +195,7 @@ class EliminateMatchCupController extends Controller
                             }
                             if ($aggressive_chance >= rand(0, 100) * 100) {
                                 $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
-                                $state = rand(80, 100);
+                                $state = rand(50, 95);
                             } else {
                                 if ($currentTeam == 1) {
                                     if (rand(1, 100) <= 30) {
@@ -218,7 +214,7 @@ class EliminateMatchCupController extends Controller
                             }
                         } else {
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
-                            $state = rand(80, 100);
+                            $state = rand(50, 95);
                         }
                     }
 
@@ -229,18 +225,16 @@ class EliminateMatchCupController extends Controller
                         $team2_defense_chance = rand(0, 80) * $team2_defense;
                         $aggressive_chance = rand(0, 100) * ($currentTeam == 1 ? $team2_aggressive : $team1_aggressive);
                         if ($team1_score - $team2_score >= 1) {
-                            // $team2_attack_chance = rand(40, 100) * $team2_attack;
                             $team2_defense_chance = rand(0, 100) * $team2_defense;
                             $aggressive_chance *= 0.5; // Giảm aggressive
                         } elseif ($team2_score - $team1_score >= 1) {
-                            // $team1_attack_chance = rand(40, 100) * $team1_attack;
                             $team1_defense_chance = rand(0, 100) * $team1_defense;
                             $aggressive_chance *= 0.5; // Giảm aggressive
                         }
                         if (($currentTeam == 1 && $team1_attack_chance > $team2_defense_chance) || ($currentTeam == 2 && $team2_attack_chance > $team1_defense_chance)) {
                             if ($currentTeam == 1) {
                                 $team1_shots++;
-                                if (rand(1, 100) <= 50) {
+                                if (rand(1, 100) <= 70) {
                                     $team1_shots_on_target++;
                                     if (rand(1, 100) <= 50) {
                                         $team1_score++;
@@ -254,7 +248,7 @@ class EliminateMatchCupController extends Controller
                                 }
                             } else {
                                 $team2_shots++;
-                                if (rand(1, 100) <= 50) {
+                                if (rand(1, 100) <= 70) {
                                     $team2_shots_on_target++;
                                     if (rand(1, 100) <= 50) {
                                         $team2_score++;
@@ -270,7 +264,7 @@ class EliminateMatchCupController extends Controller
                         } else {
                             if ($aggressive_chance >= rand(30, 100) * 100) {
                                 $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
-                                $state = rand(80, 100);
+                                $state = rand(50, 95);
                             } else {
                                 if (rand(1, 100) <= 30) {
                                     $team1_penalty_chance = rand(10, 30) * $team1_penalty;
@@ -323,8 +317,8 @@ class EliminateMatchCupController extends Controller
             }
             $winner_id = $team1_score > $team2_score ? $team1->id : ($team1_score < $team2_score ? $team2->id : ($penaltyresult['winnerId'] == $team1->id ? $team1->id : $team2->id));
             $loser_id = ($winner_id === $team1->id) ? $team2->id : $team1->id;
-
-            // dd($team1_score, $team2_score, $winner_id, $penaltyresult);
+            $title1 = getTitleByRound($match->round, $team1->id, $winner_id);
+            $title2 = getTitleByRound($match->round, $team2->id, $winner_id);
             // dd(
             //     "team1id: " . $match->team1_id,
             //     "Team1score: " . $team1_score,
@@ -355,10 +349,7 @@ class EliminateMatchCupController extends Controller
                     'updated_at' => now()
                 ]);
 
-            $title1 = getTitleByRound($match->round, $team1->id, $winner_id);
-            $title2 = getTitleByRound($match->round, $team1->id, $winner_id);
 
-            // dd($title1, $title2);
             if ($match->round === 'semi_finals') {
                 $loser_id = ($winner_id === $team1->id) ? $team2->id : $team1->id;
                 addTeamToMatch($season_id, 'third_place', $loser_id);
@@ -366,8 +357,10 @@ class EliminateMatchCupController extends Controller
             } else {
                 $next_match = DB::table('eliminate_stage_matches')
                     ->where('season_id', $season_id)
-                    ->whereNull('team1_id')
-                    ->orWhereNull('team2_id')
+                    ->where(function ($query) {
+                        $query->whereNull('team1_id')
+                              ->orWhereNull('team2_id');
+                    })
                     ->first();
                 if ($next_match) {
                     $update_data = [];
@@ -382,8 +375,8 @@ class EliminateMatchCupController extends Controller
                 }
             }
 
-            $this->updateHistory($match->team1_id, $match->season_id, $team1_score, $team2_score, $team1_fouls, $team1_possession, $match->round);
-            $this->updateHistory($match->team2_id, $match->season_id, $team2_score, $team1_score, $team2_fouls, $team2_possession, $match->round);
+            $this->updateHistory($match->team1_id, $match->season_id, $team1_score, $team2_score, $team1_fouls, $team1_possession, $title1);
+            $this->updateHistory($match->team2_id, $match->season_id, $team2_score, $team1_score, $team2_fouls, $team2_possession, $title2);
         }
 
         $matchResult = [];
@@ -407,7 +400,7 @@ class EliminateMatchCupController extends Controller
             ->with('matchResult', $matchResult);
     }
 
-    private function updateHistory($teamId, $seasonId, $goalsScored, $goalsConceded, $fouls, $possession, $round)
+    private function updateHistory($teamId, $seasonId, $goalsScored, $goalsConceded, $fouls, $possession, $title)
     {
         if (!$teamId) return;
 
@@ -437,20 +430,6 @@ class EliminateMatchCupController extends Controller
             $lose += 1;
             DB::table('teams')->where('id', $teamId)->decrement('form', 5);
         }
-        $title = null;
-        if ($round === 'group_of_32') {
-            $title = 'group_of_32';
-        } elseif ($round === 'semi_final') {
-            $title = 'semi_final';
-        } elseif ($round === '4th_place') {
-            $title = '4th_place';
-        } elseif ($round === '3rd_place') {
-            $title = '3rd_place';
-        } elseif ($round === 'runner_up') {
-            $title = 'runner_up';
-        } elseif ($round === 'champion') {
-            $title = 'champion';
-        }
 
         $form = DB::table('teams')->where('id', $teamId)->value('form');
         $form = max(5, min(100, $form));
@@ -466,6 +445,7 @@ class EliminateMatchCupController extends Controller
                 'goal_difference' => $goalDifference,
                 'foul' => $totalFouls,
                 'average_possession' => round($averagePossession, 2),
+                'title' => $title,
                 'win' => $win,
                 'draw' => $draw,
                 'lose' => $lose,
@@ -529,7 +509,8 @@ function getTitleByRound($round, $teamId, $winnerId)
         return $round;
     }
 }
-function addTeamToMatch($season_id, $round, $team_id) {
+function addTeamToMatch($season_id, $round, $team_id)
+{
     // Tìm trận đấu theo vòng và còn trống team1 hoặc team2
     $match = DB::table('eliminate_stage_matches')
         ->where('season_id', $season_id)
@@ -554,4 +535,3 @@ function addTeamToMatch($season_id, $round, $team_id) {
             ->update($update_data);
     }
 }
-

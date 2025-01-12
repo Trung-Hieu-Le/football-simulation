@@ -98,4 +98,22 @@ class EliminateCupController extends Controller
             'season'
         ));
     }
+
+    public function teamStatistics($seasonId, Request $request)
+{
+    $sortBy = $request->query('sort_by', 'points'); // Mặc định sắp xếp theo 'points'
+
+    $histories = DB::table('group_stage_standings')
+        ->join('teams', 'group_stage_standings.team_id', '=', 'teams.id')
+        ->select(
+            'teams.name as team_name',
+            'group_stage_standings.*'
+        )
+        ->where('group_stage_standings.season_id', $seasonId)
+        ->whereBetween('group_stage_standings.position', [1, 4]) // Lấy các vị trí từ 1 đến 4
+        ->orderBy("group_stage_standings.{$sortBy}", 'desc')
+        ->get();
+    return view('cup.eliminate.statistics', compact('histories', 'seasonId', 'sortBy'));
+}
+
 }

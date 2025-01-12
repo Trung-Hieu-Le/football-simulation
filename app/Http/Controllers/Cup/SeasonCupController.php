@@ -20,6 +20,13 @@ class SeasonCupController extends Controller
             $totalMatches = DB::table('group_stage_matches')
                 ->where('season_id', $season->id)
                 ->count();
+            $champion = DB::table('teams')
+                ->select('teams.*')
+                ->join('group_stage_standings', 'teams.id', 'group_stage_standings.team_id')
+                ->where('season_id', $season->id)
+                ->where('group_stage_standings.title', 'champion')
+                ->first();
+            // dd($champion);
 
             // Số trận đã có tỉ số
             $completedMatchesCount = DB::table('group_stage_matches')
@@ -52,6 +59,13 @@ class SeasonCupController extends Controller
             $season->round_rate = round($roundRate, 2);
             $season->current_round = $currentRound;
             $season->max_round = $maxRound;
+            $season->champion = $champion ? [
+                'name' => $champion->name,
+                'color_1' => $champion->color_1,
+                'color_2' => $champion->color_2,
+                'color_3' => $champion->color_3,
+            ] : null;
+            
 
             return $season;
         });
@@ -64,6 +78,7 @@ class SeasonCupController extends Controller
     public function destroy($id)
     {
         DB::table('group_stage_standings')->where('season_id', $id)->delete();
+        DB::table('eliminate_stage_matches')->where('season_id', $id)->delete();
         DB::table('group_stage_matches')->where('season_id', $id)->delete();
         DB::table('group_teams')->where('season_id', $id)->delete();
         DB::table('seasons')->where('id', $id)->delete();

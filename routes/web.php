@@ -44,6 +44,7 @@ Route::prefix('tier')->group(function () {
 Route::prefix('cup')->group(function () {
     Route::resource('teams', TeamCupController::class);
     Route::put('/teams/{id}', [TeamCupController::class, 'update'])->name('cup.teams.update');
+    Route::post('/teams/reset-form', [TeamCupController::class, 'resetForm'])->name('cup.teams.resetForm');
 
     Route::get('/', [SeasonCupController::class, 'index'])->name('cup.seasons.index');
     Route::get('/seasons', [SeasonCupController::class, 'index'])->name('cup.seasons.index');
@@ -63,5 +64,7 @@ Route::prefix('cup')->group(function () {
 Route::prefix('cup/eliminate')->group(function () {
     Route::get('view/{season}', [EliminateCupController::class, 'view'])->name('cup.eliminate.view');
     Route::post('/simulate', [EliminateMatchCupController::class, 'simulateMatch'])->name('cup.seasons.eliminate.simulate');
+    Route::get('/statistics/{seasonId}', [EliminateCupController::class, 'teamStatistics'])->name('cup.eliminate.statistics');
+
 
 });

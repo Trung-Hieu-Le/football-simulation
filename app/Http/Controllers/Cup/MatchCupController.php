@@ -180,12 +180,14 @@ class MatchCupController extends Controller
                         if ($long_shot_chance <= $long_shot_threshold_team1 && $currentTeam == 1) {
                             $team1_score++;
                             $team1_shots++;
+                            $team1_shots_on_target++;
                             $dangerousSituations[] = "$time': Long Shot Goal by $team1->name!";
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
                             $state = null; // Reset state
                         } elseif ($long_shot_chance <= $long_shot_threshold_team2 && $currentTeam == 2) {
                             $team2_score++;
                             $team2_shots++;
+                            $team2_shots_on_target++;
                             $dangerousSituations[] = "$time': Long Shot Goal by $team2->name!";
                             $currentTeam = 3 - $currentTeam; // Đội kia cướp bóng 
                             $state = null; // Reset state

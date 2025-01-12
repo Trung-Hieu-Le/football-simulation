@@ -28,6 +28,7 @@
                 <th>Số đội</th>
                 <th>Tỷ lệ trận đã hoàn thành (%)</th>
                 <th>Vòng hiện tại / Tổng vòng</th>
+                <th>Champion</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -40,6 +41,18 @@
                     <td>{{ $season->teams_count }}</td>
                     <td>{{ $season->match_completion_rate }}%</td>
                     <td>{{ $season->current_round }} / {{ $season->max_round }}</td>
+                    <td>
+                        @if ($season->champion)
+                            <div style="background: linear-gradient(to right, {{ $season->champion['color_1'] }} 60%, {{ $season->champion['color_2']}} 40%);
+                                color: {{ $season->champion['color_3'] }};
+                                text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+                                padding: 5px; border-radius: 5px;">
+                            {{ $season->champion['name'] }}
+                        @else
+                            <span>No Champion</span>
+                        @endif
+                        </div>
+                    </td>
                     <td>
                         <form action="{{ route('cup.seasons.destroy', $season->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this season?');">
                             @csrf

@@ -3,7 +3,11 @@
 @section('content')
 <div class="container">
     <h2>Danh sách các đội bóng</h2>
-
+    <form method="POST" action="{{ route('cup.teams.resetForm') }}">
+        @csrf
+        <button type="submit" class="btn btn-warning">Reset Form</button>
+    </form>
+    
     <!-- Bảng liệt kê các đội bóng -->
     <table class="table table-active">
         <thead>
@@ -115,7 +119,7 @@
                                     <th>Bàn thua</th>
                                     <th>Hiệu số</th>
                                     <th>Vị trí</th>
-                                    <th>Group</th>
+                                    <th>Danh hiệu</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -126,8 +130,8 @@
                                             <td>{{ $history->goal_scored }}</td>
                                             <td>{{ $history->goal_conceded }}</td>
                                             <td>{{ $history->goal_difference }}</td>
-                                            <td>{{ $history->position }}</td>
-                                            <td>{{ $history->group }}</td>
+                                            <td>{{ $history->position }}-{{ $history->group }}</td>
+                                            <td>{{ $history->title }}</td>
                                         </tr>
                                     @endif
                                 @endforeach
