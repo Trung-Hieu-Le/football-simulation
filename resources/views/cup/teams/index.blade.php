@@ -8,7 +8,6 @@
         <button type="submit" class="btn btn-warning">Reset Form</button>
     </form>
     
-    <!-- Bảng liệt kê các đội bóng -->
     <table class="table table-active">
         <thead>
             <tr>
@@ -39,14 +38,24 @@
                     <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Tranh chấp
-                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'desc']) }}">⬇️</a>
+                    Chuyền bóng
+                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Penalty
-                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'desc']) }}">⬇️</a>
+                    Tốc độ
+                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Tinh thần
+                    <a href="{{ route('teams.index', ['sort' => 'mental', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'mental', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Kỷ luật
+                    <a href="{{ route('teams.index', ['sort' => 'discipline', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'discipline', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
                     Phong độ
@@ -58,6 +67,7 @@
                     <a href="{{ route('teams.index', ['sort' => 'total', 'direction' => 'asc']) }}">⬆️</a>
                     <a href="{{ route('teams.index', ['sort' => 'total', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
+                <th>Khu vực</th>
                 <th>Hành động</th>
             </tr>
         </thead>
@@ -78,20 +88,14 @@
                     <td>{{ $team->defense }}</td>
                     <td>{{ $team->control }}</td>
                     <td>{{ $team->stamina }}</td>
-                    <td>{{ $team->aggressive }}</td>
-                    <td>{{ $team->penalty }}</td> 
+                    <td>{{ $team->pass }}</td>
+                    <td>{{ $team->speed }}</td>
+                    <td>{{ $team->mental }}</td>
+                    <td>{{ $team->discipline }}</td>
                     <td>{{ $team->form }}</td>
-                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->aggressive+$team->penalty }}</td>
-
-                    {{-- <td>
-                        <div style="display: flex;">
-                            <div style="background-color: {{ $team->color_1 }}; width: 20px; height: 20px; margin-right: 5px;"></div>
-                            <div style="background-color: {{ $team->color_2 }}; width: 20px; height: 20px; margin-right: 5px;"></div>
-                            <div style="background-color: {{ $team->color_3 }}; width: 20px; height: 20px;"></div>
-                        </div>
-                    </td> --}}
+                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->pass+$team->speed+$team->mental+$team->discipline }}</td>
+                    <td>{{ $team->region_name }}</td>
                     <td>
-                        <!-- Nút Edit và Nút Xem lịch sử -->
                         <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ $team->id }}">Edit</button>
                         <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#historyModal{{ $team->id }}">Lịch sử</button>
                     </td>
@@ -100,7 +104,6 @@
         </tbody>
     </table>
 
-    <!-- Render tất cả các modal bên ngoài vòng lặp -->
     @foreach ($teams as $team)
         <!-- Modal Xem Lịch Sử -->
         <div class="modal fade" id="historyModal{{ $team->id }}" tabindex="-1" aria-labelledby="historyModalLabel{{ $team->id }}" aria-hidden="true">
@@ -155,7 +158,6 @@
                         </div>
                         <div class="modal-body">
                             <div class="row">
-                                <!-- Input col-6 -->
                                 <div class="col-6 mb-3">
                                     <label for="name" class="form-label">Tên đội</label>
                                     <input type="text" class="form-control" name="name" value="{{ $team->name }}" required>
@@ -177,18 +179,25 @@
                                     <input type="number" class="form-control" name="stamina" value="{{ $team->stamina }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="speed" class="form-label">Tranh chấp</label>
-                                    <input type="number" class="form-control" name="aggressive" value="{{ $team->aggressive }}" required>
+                                    <label for="pass" class="form-label">Chuyền bóng</label>
+                                    <input type="number" class="form-control" name="pass" value="{{ $team->pass }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="penalty" class="form-label">Penalty</label>
-                                    <input type="number" class="form-control" name="penalty" value="{{ $team->penalty }}" required>
+                                    <label for="speed" class="form-label">Tốc độ</label>
+                                    <input type="number" class="form-control" name="speed" value="{{ $team->speed }}" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="mental" class="form-label">Tinh thần</label>
+                                    <input type="number" class="form-control" name="mental" value="{{ $team->mental }}" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="discipline" class="form-label">Kỷ luật</label>
+                                    <input type="number" class="form-control" name="discipline" value="{{ $team->discipline }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
                                     <label for="form" class="form-label">Phong độ</label>
                                     <input type="number" class="form-control" name="form" value="{{ $team->form }}" required>
                                 </div>
-                                <!-- Select option khu vực -->
                                 <div class="col-6 mb-3">
                                     <label for="region_id" class="form-label">Khu vực</label>
                                     <select class="form-select" name="region" required>
@@ -200,7 +209,6 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <!-- Màu sắc -->
                                 <div class="col-6 mb-3">
                                     <label for="color_1" class="form-label">Màu áo</label>
                                     <input type="color" class="form-control" name="color_1" value="{{ $team->color_1 }}" required>

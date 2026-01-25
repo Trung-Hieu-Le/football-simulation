@@ -17,11 +17,10 @@ class StatisticCupController extends Controller
             ->join('teams', 'teams.id', '=', 'group_stage_standings.team_id')
             ->join('seasons', 'seasons.id', '=', 'group_stage_standings.season_id')
             ->selectRaw('seasons.season as season, teams.name as team_name, group_stage_standings.position, group_stage_standings.points')
-            ->groupBy('season_id', 'position', 'group_stage_standings.team_id', 'points')
+            ->groupBy('season_id', 'position', 'group_stage_standings.team_id', 'points', 'seasons.season', 'teams.name')
             ->orderBy('season_id', 'desc')
             ->get()
             ->groupBy('season');
-
 
         // 2. Teams with the most championships (Position 1, Tier 1)
         $champions = DB::table('teams')
@@ -47,7 +46,6 @@ class StatisticCupController extends Controller
                 ->join('teams', 'teams.id', '=', 'group_stage_standings.team_id')
                 ->where('title', 'champion')
                 ->select('teams.name as team_name', 'group_stage_standings.points')
-                // ->where('position', 1)
                 ->orderByDesc('points')
                 ->take(5)
                 ->get(),
@@ -57,7 +55,6 @@ class StatisticCupController extends Controller
                 ->join('teams', 'teams.id', '=', 'group_stage_standings.team_id')
                 ->where('title', 'champion')
                 ->select('teams.name as team_name', 'group_stage_standings.points')
-                // ->where('position', 1)
                 ->orderBy('points')
                 ->take(5)
                 ->get(),
@@ -130,29 +127,26 @@ class StatisticCupController extends Controller
         // 5. Top 5 Teams with highest stats but never won a championship
         $highestStatsNoChampion = DB::table('teams')
             ->join('group_stage_standings', 'teams.id', '=', 'group_stage_standings.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.aggressive + teams.penalty)) as total_stats'))
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
             ->whereNotIn('teams.id', function ($query) {
-                $query->select('team_id')->from('group_stage_standings')->where('position', 1);
+                $query->select('team_id')->from('group_stage_standings')->where('title', 'champion');
             })
             ->groupBy('teams.name')
             ->orderByDesc('total_stats')
             ->take(5)
             ->get();
 
-
-
         // 6. Top 5 Teams with lowest stats that have won a championship
         $lowestStatsChampion = DB::table('teams')
             ->join('group_stage_standings', 'teams.id', '=', 'group_stage_standings.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.aggressive + teams.penalty)) as total_stats'))
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
             ->whereIn('teams.id', function ($query) {
-                $query->select('team_id')->from('group_stage_standings')->where('position', 1);
+                $query->select('team_id')->from('group_stage_standings')->where('title', 'champion');
             })
             ->groupBy('teams.name')
             ->orderBy('total_stats')
             ->take(5)
             ->get();
-
 
         return view('cup.statistics.index', compact('topTeams', 'champions', 'statistics', 'topWinTeams', 'topDrawTeams', 'topLoseTeams', 'highestStatsNoChampion', 'lowestStatsChampion'));
     }

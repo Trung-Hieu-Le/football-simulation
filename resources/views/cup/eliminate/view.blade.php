@@ -22,28 +22,36 @@
                 <div class="scoreboard h2">
                     {{ $matchResult['team1_name'] }} &nbsp; {{ $matchResult['team1_score'] }} - {{ $matchResult['team2_score'] }} &nbsp; {{ $matchResult['team2_name'] }}
                 </div>
+                <?php 
+                $team1_possession = $matchResult['team1_possession'];
+                $team2_possession = $matchResult['team2_possession'];
+                $team1_shots = $matchResult['team1_shots'];
+                $team2_shots = $matchResult['team2_shots'];
+                $team1_shots_on_target = $matchResult['team1_shots_on_target'];
+                $team2_shots_on_target = $matchResult['team2_shots_on_target'];
+                ?>
                 <div class="stats row mt-4">
                     <div class="col-6 text-end">
-                        <p>Possession: {{ $matchResult['team1_possession'] }}%</p>
-                        <p>Shots: {{ $matchResult['team1_shots'] }}</p>
-                        <p>Shots on Target: {{ $matchResult['team1_shots_on_target'] }}</p>
+                        <p>Possession: {{ $team1_possession }}%</p>
+                        <p>Shots: {{ $team1_shots }}</p>
+                        <p>Shots on Target: {{ $team1_shots_on_target }}</p>
                     </div>
                     <div class="col-6 text-start">
-                        <p>Possession: {{ $matchResult['team2_possession'] }}%</p>
-                        <p>Shots: {{ $matchResult['team2_shots'] }}</p>
-                        <p>Shots on Target: {{ $matchResult['team2_shots_on_target'] }}</p>
+                        <p>Possession: {{ $team2_possession }}%</p>
+                        <p>Shots: {{ $team2_shots }}</p>
+                        <p>Shots on Target: {{ $team2_shots_on_target }}</p>
                     </div>
                 </div>
                 <div class="situations fst-italic fs-6 lh-1 mb-2">
                     <div class="situation-left">
-                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                        @foreach ($matchResult['specialEvents'] as $situation)
                             @if (str_contains($situation, $matchResult['team1_name']))
                                 <p class="mb-0">{{ $situation }}</p>
                             @endif
                         @endforeach
                     </div>
                     <div class="situation-right">
-                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                        @foreach ($matchResult['specialEvents'] as $situation)
                             @if (str_contains($situation, $matchResult['team2_name']))
                                 <p class="mb-0">{{ $situation }}</p>
                             @endif

@@ -12,7 +12,7 @@
       <h1>Histories</h1>
       <div>
           <div>
-              <form method="GET" action="/histories/{{$seasonId}}">
+              <form method="GET" action="/cup/histories/{{$seasonId}}">
                 <select name="sort_by" onchange="this.form.submit()">
                   <option value="points" {{ $sortBy == 'points' ? 'selected' : '' }}>Points</option>
                   <option value="goals_scored" {{ $sortBy == 'goals_scored' ? 'selected' : '' }}>Goals Scored</option>

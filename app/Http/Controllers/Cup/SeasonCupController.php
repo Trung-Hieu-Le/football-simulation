@@ -223,7 +223,7 @@ class SeasonCupController extends Controller
         ")
             ->join('teams', 'group_stage_standings.team_id', '=', 'teams.id')
             ->where('season_id', $seasonId)
-            ->groupBy('team_id')
+            ->groupBy('team_id', 'teams.name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
             ->orderBy($sortBy, 'desc')
             ->get();
 
@@ -238,11 +238,11 @@ class SeasonCupController extends Controller
     public function store(Request $request)
     {
         if ($request->teams_count % 32 !== 0) {
-            return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 12.']);
+            return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 32.']);
         }
 
-        $metaOptions = ['attack', 'defense', 'control', 'aggressive', 'stamina', 'penalty'];
-        $meta = $request->meta ?: $metaOptions[array_rand($metaOptions)]; // Nếu không chọn thì lấy random
+        $metaOptions = ['possession', 'counter', 'pressing', 'tiki-taka', 'long_ball', 'build_up', 'low_block', 'high_risk', 'high_line'];
+        $meta = $request->meta ?: $metaOptions[array_rand($metaOptions)];
         $seasonId = DB::table('seasons')->insertGetId([
             'season' => $request->season,
             'teams_count' => $request->teams_count,

@@ -24,6 +24,8 @@ use App\Http\Controllers\Cup\StatisticCupController;
 |
 */
 
+Route::get("/", [SeasonCupController::class, 'index'])->name('cup.seasons.index');
+
 Route::prefix('tier')->group(function () {
     Route::resource('teams', TeamTierController::class);
     Route::put('/teams/{id}', [TeamTierController::class, 'update'])->name('teams.update');
