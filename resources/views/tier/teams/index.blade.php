@@ -3,6 +3,10 @@
 @section('content')
 <div class="container">
     <h2>Danh sách các đội bóng</h2>
+    <form method="POST" action="{{ route('tier.teams.resetForm') }}">
+        @csrf
+        <button type="submit" class="btn btn-warning">Reset Form</button>
+    </form>
 
     <!-- Bảng liệt kê các đội bóng -->
     <table class="table table-active">
@@ -35,14 +39,24 @@
                     <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Tranh chấp
-                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'aggressive', 'direction' => 'desc']) }}">⬇️</a>
+                    Chuyền bóng
+                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Penalty
-                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'penalty', 'direction' => 'desc']) }}">⬇️</a>
+                    Tốc độ
+                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Tinh thần
+                    <a href="{{ route('teams.index', ['sort' => 'mental', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'mental', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Kỷ luật
+                    <a href="{{ route('teams.index', ['sort' => 'discipline', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'discipline', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
                     Phong độ
@@ -74,10 +88,12 @@
                     <td>{{ $team->defense }}</td>
                     <td>{{ $team->control }}</td>
                     <td>{{ $team->stamina }}</td>
-                    <td>{{ $team->aggressive }}</td>
-                    <td>{{ $team->penalty }}</td> 
+                    <td>{{ $team->pass }}</td>
+                    <td>{{ $team->speed }}</td>
+                    <td>{{ $team->mental }}</td>
+                    <td>{{ $team->discipline }}</td>
                     <td>{{ $team->form }}</td>
-                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->aggressive+$team->penalty }}</td>
+                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->pass+$team->speed+$team->mental+$team->discipline }}</td>
 
                     {{-- <td>
                         <div style="display: flex;">
@@ -173,12 +189,16 @@
                                     <input type="number" class="form-control" name="stamina" value="{{ $team->stamina }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="speed" class="form-label">Tranh chấp</label>
-                                    <input type="number" class="form-control" name="aggressive" value="{{ $team->aggressive }}" required>
+                                    <label for="speed" class="form-label">Tốc độ</label>
+                                    <input type="number" class="form-control" name="speed" value="{{ $team->speed }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="penalty" class="form-label">Penalty</label>
-                                    <input type="number" class="form-control" name="penalty" value="{{ $team->penalty }}" required>
+                                    <label for="mental" class="form-label">Tinh thần</label>
+                                    <input type="number" class="form-control" name="mental" value="{{ $team->mental }}" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="discipline" class="form-label">Kỷ luật</label>
+                                    <input type="number" class="form-control" name="discipline" value="{{ $team->discipline }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
                                     <label for="form" class="form-label">Phong độ</label>

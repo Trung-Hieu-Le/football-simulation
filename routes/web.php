@@ -29,13 +29,15 @@ Route::get("/", [SeasonCupController::class, 'index'])->name('cup.seasons.index'
 Route::prefix('tier')->group(function () {
     Route::resource('teams', TeamTierController::class);
     Route::put('/teams/{id}', [TeamTierController::class, 'update'])->name('teams.update');
+    Route::post('/teams/reset-form', [TeamTierController::class, 'resetForm'])->name('tier.teams.resetForm');
 
-    Route::get('/', [SeasonTierController::class, 'index'])->name('seasons.index');
+    Route::get('/', [SeasonTierController::class, 'index'])->name('tier.seasons.index');
     Route::get('/seasons', [SeasonTierController::class, 'index'])->name('seasons.index');
     Route::get('/seasons/create', [SeasonTierController::class, 'create'])->name('seasons.create');
     Route::post('/seasons', [SeasonTierController::class, 'store'])->name('seasons.store');
     Route::get('/seasons/{id}', [SeasonTierController::class, 'show'])->name('seasons.show');
     Route::delete('/seasons/{id}', [SeasonTierController::class, 'destroy'])->name('seasons.destroy');
+    Route::get('/seasons-destroy-all', [SeasonTierController::class, 'destroyAll'])->name('tier.seasons.destroy_all');
     Route::get('/matches/{id}', [SeasonTierController::class, 'listMatches'])->name('matches.show');
     Route::get('/histories/{id}', [SeasonTierController::class, 'showStatistics'])->name('histories.show');
     Route::post('/seasons/simulate', [MatchTierController::class, 'simulateMatch'])->name('seasons.simulate');

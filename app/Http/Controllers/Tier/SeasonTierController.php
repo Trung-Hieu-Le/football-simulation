@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Enums\SeasonMeta;
 
 class SeasonTierController extends Controller
 {
@@ -12,17 +13,17 @@ class SeasonTierController extends Controller
     public function index()
     {
         // Lấy danh sách các mùa giải
-        $seasons = DB::table('seasons')->orderBy('season', 'desc')->get();
+        $seasons = DB::table('tier_seasons')->orderBy('season', 'desc')->get();
 
         // Thêm thông tin tỷ lệ trận và vòng vào từng season
         $seasons = $seasons->map(function ($season) {
             // Tổng số trận của mùa giải
-            $totalMatches = DB::table('matches')
+            $totalMatches = DB::table('tier_matches')
                 ->where('season_id', $season->id)
                 ->count();
 
             // Số trận đã có tỉ số
-            $completedMatchesCount = DB::table('matches')
+            $completedMatchesCount = DB::table('tier_matches')
                 ->where('season_id', $season->id)
                 ->whereNotNull('team1_score')
                 ->whereNotNull('team2_score')
@@ -32,7 +33,7 @@ class SeasonTierController extends Controller
             $matchCompletionRate = $totalMatches > 0 ? ($completedMatchesCount / $totalMatches) * 100 : 0;
 
             // Xác định round hiện tại và round tối đa
-            $currentRound = DB::table('matches')
+            $currentRound = DB::table('tier_matches')
                 ->where('season_id', $season->id)
                 ->where(function ($query) {
                     $query->whereNull('team1_score')
@@ -64,22 +65,33 @@ class SeasonTierController extends Controller
     public function destroy($id)
     {
 
-        DB::table('histories')->where('season_id', $id)->delete();
-        DB::table('matches')->where('season_id', $id)->delete();
-        DB::table('team_groups')->where('season_id', $id)->delete();
-        DB::table('seasons')->where('id', $id)->delete();
-        return redirect()->route('seasons.index')->with('success', 'Season deleted successfully.');
+        DB::table('tier_standings')->where('season_id', $id)->delete();
+        DB::table('tier_matches')->where('season_id', $id)->delete();
+        DB::table('tier_team_groups')->where('season_id', $id)->delete();
+        DB::table('tier_seasons')->where('id', $id)->delete();
+        return redirect()->route('tier.seasons.index')->with('success', 'Season deleted successfully.');
+    }
+
+    // Xóa season all
+    public function destroyAll()
+    {
+        DB::table('tier_standings')->delete();
+        DB::table('tier_matches')->delete();
+        DB::table('tier_team_groups')->delete();
+        DB::table('tier_seasons')->delete();
+        return redirect()->route('tier.seasons.index')->with('success', 'All seasons deleted successfully.');
     }
 
     // Hiển thị form tạo mới
     public function create()
     {
-        $lastSeason = DB::table('seasons')->orderBy('id', 'desc')->first();
+        $lastSeason = DB::table('tier_seasons')->orderBy('id', 'desc')->first();
 
         $nextSeason = $lastSeason ? $lastSeason->season + 1 : 1;
-        $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 64;
+        $listTeamsCount = [36, 48, 60];
+        $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 60;
 
-        return view('tier.seasons.create', compact('nextSeason', 'nextTeamsCount'));
+        return view('tier.seasons.create', compact('nextSeason', 'nextTeamsCount', 'listTeamsCount'));
     }
 
 
@@ -87,12 +99,12 @@ class SeasonTierController extends Controller
     // Hiển thị chi tiết season
     public function show($id)
     {
-        $season = DB::table('seasons')->where('id', $id)->first();
+        $season = DB::table('tier_seasons')->where('id', $id)->first();
 
-        // Lấy thông tin bảng xếp hạng từ histories
-        $groupStandings = DB::table('histories')
-            ->select('histories.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
-            ->join('teams', 'teams.id', 'histories.team_id')
+        // Lấy thông tin bảng xếp hạng từ tier_standings
+        $groupStandings = DB::table('tier_standings')
+            ->select('tier_standings.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
+            ->join('teams', 'teams.id', 'tier_standings.team_id')
             ->where('season_id', $id)
             ->orderBy('tier', 'asc')
             ->orderBy('position', 'asc')
@@ -100,7 +112,7 @@ class SeasonTierController extends Controller
             ->groupBy('tier');
 
         //TODO: currentRound không vượt quá giá trị quy định
-        $currentRound = DB::table('matches')
+        $currentRound = DB::table('tier_matches')
             ->where('season_id', $id)
             ->where(function ($query) {
                 $query->whereNull('team1_score')
@@ -114,15 +126,15 @@ class SeasonTierController extends Controller
         $promotionRelegationCount = floor($season->teams_count / 12);
 
         // Lấy thông tin các trận đấu đã xảy ra và sắp tới
-        $completedMatches = DB::table('matches')
-            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
-            ->where('matches.team1_score', '!=', null)
-            ->where('matches.team2_score', '!=', null)
-            ->where('matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
-            ->where('matches.season_id', $id)
+        $completedMatches = DB::table('tier_matches')
+            ->join('teams as t1', 'tier_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'tier_matches.team2_id', '=', 't2.id')
+            ->where('tier_matches.team1_score', '!=', null)
+            ->where('tier_matches.team2_score', '!=', null)
+            ->where('tier_matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
+            ->where('tier_matches.season_id', $id)
             ->select(
-                'matches.*',
+                'tier_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -135,13 +147,13 @@ class SeasonTierController extends Controller
             ->get();
 
         // Lọc các trận đấu sắp tới
-        $nextMatches = DB::table('matches')
-            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
-            ->where('matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
-            ->where('matches.season_id', $id)
+        $nextMatches = DB::table('tier_matches')
+            ->join('teams as t1', 'tier_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'tier_matches.team2_id', '=', 't2.id')
+            ->where('tier_matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
+            ->where('tier_matches.season_id', $id)
             ->select(
-                'matches.*',
+                'tier_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -181,7 +193,7 @@ class SeasonTierController extends Controller
                         $result = 'relegated';
                     }
 
-                    DB::table('histories')
+                    DB::table('tier_standings')
                         ->where('id', $team->id)
                         ->update(['result' => $result]);
                 }
@@ -194,11 +206,11 @@ class SeasonTierController extends Controller
     public function listMatches(Request $request)
     {
         $seasonId = $request->id;
-        $matchesByRound = DB::table('matches')->orderBy('round')
-            ->join('teams as t1', 'matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'matches.team2_id', '=', 't2.id')
+        $matchesByRound = DB::table('tier_matches')->orderBy('round')
+            ->join('teams as t1', 'tier_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'tier_matches.team2_id', '=', 't2.id')
             ->select(
-                'matches.*',
+                'tier_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -217,7 +229,7 @@ class SeasonTierController extends Controller
     {
         $sortBy = $request->get('sort_by', 'points');
         $seasonId = $request->id;
-        $histories = DB::table('histories')->selectRaw("
+        $histories = DB::table('tier_standings')->selectRaw("
             team_id,
             SUM(match_played) as matches_played,
             SUM(goal_scored) as goals_scored,
@@ -231,9 +243,9 @@ class SeasonTierController extends Controller
             SUM(lose) as loses,
             teams.name as team_name, teams.color_1 as team_c1, teams.color_2 as team_c2, teams.color_3 as team_c3
         ")
-            ->join('teams', 'histories.team_id', '=', 'teams.id')
+            ->join('teams', 'tier_standings.team_id', '=', 'teams.id')
             ->where('season_id', $seasonId)
-            ->groupBy('team_id')
+            ->groupBy('team_id', 'team_name', 'team_c1', 'team_c2', 'team_c3')
             ->orderBy($sortBy, 'desc')
             ->get();
 
@@ -247,24 +259,28 @@ class SeasonTierController extends Controller
     // Lưu season và phân chia teams
     public function store(Request $request)
     {
-        if ($request->teams_count % 12 !== 0) {
-            return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 12.']);
+        try {
+            if ($request->teams_count % 12 !== 0) {
+                return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 12.']);
+            }
+    
+            $meta = $request->meta ?: SeasonMeta::random(); // Nếu không chọn thì lấy random
+    
+            $seasonId = DB::table('tier_seasons')->insertGetId([
+                'season' => $request->season,
+                'teams_count' => $request->teams_count,
+                'meta' => $meta,
+            ]);
+    
+            $this->assignTeamsToTiers($seasonId, $request->teams_count);
+            $this->createHistories($seasonId, $request->teams_count);
+            $this->createMatches($seasonId);
+    
+            return redirect()->route('tier.seasons.index')->with('success', 'Season created successfully.');
+        } catch (\Throwable $th) {
+            \App\Services\ErrorLogService::logException($th);
         }
-
-        $metaOptions = ['attack', 'defense', 'control', 'aggressive', 'stamina', 'penalty'];
-        $meta = $request->meta ?: $metaOptions[array_rand($metaOptions)]; // Nếu không chọn thì lấy random
-
-        $seasonId = DB::table('seasons')->insertGetId([
-            'season' => $request->season,
-            'teams_count' => $request->teams_count,
-            'meta' => $meta,
-        ]);
-
-        $this->assignTeamsToTiers($seasonId, $request->teams_count);
-        $this->createHistories($seasonId, $request->teams_count);
-        $this->createMatches($seasonId);
-
-        return redirect()->route('seasons.index')->with('success', 'Season created successfully.');
+        
     }
 
     // Phân chia teams thành tiers
@@ -274,7 +290,7 @@ class SeasonTierController extends Controller
         $teams = DB::table('teams')->orderBy('id')->take($teamsCount)->get();
 
         // Tìm Last Season
-        $lastSeason = DB::table('histories')
+        $lastSeason = DB::table('tier_standings')
             ->where('season_id', '<', $seasonId)
             ->orderBy('season_id', 'desc')
             ->first();
@@ -290,7 +306,7 @@ class SeasonTierController extends Controller
             ];
 
             foreach ($tiers as $tierName => $tierTeams) {
-                DB::table('team_groups')->updateOrInsert([
+                DB::table('tier_team_groups')->updateOrInsert([
                     'season_id' => $seasonId,
                     'tier' => $tierName,
                     'team_ids' => $tierTeams->pluck('id')->implode(','),
@@ -300,8 +316,8 @@ class SeasonTierController extends Controller
             return;
         }
 
-        // Lấy danh sách team histories của last season
-        $lastSeasonHistories = DB::table('histories')
+        // Lấy danh sách team standings của last season
+        $lastSeasonHistories = DB::table('tier_standings')
             ->where('season_id', $lastSeason->season_id)
             ->orderBy('tier')
             ->orderBy('position')
@@ -368,7 +384,7 @@ class SeasonTierController extends Controller
         ];
 
         foreach ($tiers as $tierName => $tierTeams) {
-            DB::table('team_groups')->updateOrInsert(
+            DB::table('tier_team_groups')->updateOrInsert(
                 [
                     'season_id' => $seasonId,
                     'tier' => $tierName,
@@ -382,13 +398,13 @@ class SeasonTierController extends Controller
     }
 
 
-    // Tạo histories cho từng đội
+    // Tạo standings cho từng đội
     private function createHistories($seasonId, $teamsCount)
     {
         $teams = DB::table('teams')->orderBy('id')->take($teamsCount)->get();
 
         foreach ($teams as $team) {
-            DB::table('histories')->insert([
+            DB::table('tier_standings')->insert([
                 'season_id' => $seasonId,
                 'team_id' => $team->id,
                 'tier' => $this->getTeamTier($team->id, $seasonId),
@@ -406,7 +422,7 @@ class SeasonTierController extends Controller
 
     private function getTeamTier($teamId, $seasonId)
     {
-        $group = DB::table('team_groups')
+        $group = DB::table('tier_team_groups')
             ->where('season_id', $seasonId)
             ->whereRaw("FIND_IN_SET($teamId, team_ids) > 0")
             ->first();
@@ -417,7 +433,7 @@ class SeasonTierController extends Controller
     // Tạo lịch thi đấu Round Robin
     private function createMatches($seasonId)
     {
-        $teamGroups = DB::table('team_groups')->where('season_id', $seasonId)->orderBy('tier', 'desc')->get();
+        $teamGroups = DB::table('tier_team_groups')->where('season_id', $seasonId)->orderBy('tier', 'desc')->get();
 
         $matches = [];
 
@@ -433,7 +449,7 @@ class SeasonTierController extends Controller
             return $a['round'] <=> $b['round'];
         });
 
-        DB::table('matches')->insert($matches);
+        DB::table('tier_matches')->insert($matches);
     }
 
 

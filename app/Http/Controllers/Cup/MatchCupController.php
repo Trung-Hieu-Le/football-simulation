@@ -25,9 +25,9 @@ class MatchCupController extends Controller
     {
         $season_id = $request->input('season_id');
         $match_count = $request->input('match_count', 1);
-        $season_meta = DB::table('seasons')->where('id', $season_id)->value('meta');
+        $season_meta = DB::table('cup_seasons')->where('id', $season_id)->value('meta');
         
-        $nextMatches = DB::table('group_stage_matches')
+        $nextMatches = DB::table('cup_group_stage_matches')
             ->where('season_id', $season_id)
             ->whereNull('team1_score')
             ->whereNull('team2_score')
@@ -71,7 +71,7 @@ class MatchCupController extends Controller
             $possessionTeam2 = round(($matchData['team2_possession'] / $possessionTotal) * 100, 2);
 
             // Cập nhật match
-            DB::table('group_stage_matches')
+            DB::table('cup_group_stage_matches')
                 ->where('id', $match->id)
                 ->update([
                     'team1_score' => $matchData['team1_score'],

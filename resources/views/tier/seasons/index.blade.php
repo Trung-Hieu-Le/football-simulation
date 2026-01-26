@@ -2,7 +2,23 @@
 
 @section('content')
     <h1>Seasons</h1>
-    <a href="{{ route('seasons.create') }}" class="btn btn-primary">Create New Season</a>
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @elseif (session('fail'))
+        <div class="alert alert-danger">
+            {{ session('fail') }}
+        </div>
+    @endif
+    <div class="d-flex justify-content-start mb-3">
+        <a href="{{ route('seasons.create') }}" class="btn btn-primary mr-2">Create New Season</a>
+        <form action="{{ route('tier.seasons.destroy_all') }}" method="GET" onsubmit="return confirm('Are you sure you want to delete all seasons?');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger">Delete All</button>
+        </form>
+    </div>
     <table class="table">
         <thead>
             <tr>

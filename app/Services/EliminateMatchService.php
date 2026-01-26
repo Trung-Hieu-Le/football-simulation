@@ -25,7 +25,7 @@ class EliminateMatchService
      */
     public function addTeamToMatch($seasonId, $round, $teamId)
     {
-        $match = DB::table('eliminate_stage_matches')
+        $match = DB::table('cup_eliminate_stage_matches')
             ->where('season_id', $seasonId)
             ->where('round', $round)
             ->where(function ($query) {
@@ -42,7 +42,7 @@ class EliminateMatchService
                 $updateData['team2_id'] = $teamId;
             }
             
-            DB::table('eliminate_stage_matches')
+            DB::table('cup_eliminate_stage_matches')
                 ->where('id', $match->id)
                 ->update($updateData);
         }
@@ -57,7 +57,7 @@ class EliminateMatchService
             $this->addTeamToMatch($seasonId, 'third_place', $loserId);
             $this->addTeamToMatch($seasonId, 'final', $winnerId);
         } else {
-            $next_match = DB::table('eliminate_stage_matches')
+            $next_match = DB::table('cup_eliminate_stage_matches')
                 ->where('season_id', $seasonId)
                 ->where(function ($query) {
                     $query->whereNull('team1_id')
@@ -72,7 +72,7 @@ class EliminateMatchService
                 } elseif (is_null($next_match->team2_id)) {
                     $update_data['team2_id'] = $winnerId;
                 }
-                DB::table('eliminate_stage_matches')
+                DB::table('cup_eliminate_stage_matches')
                     ->where('id', $next_match->id)
                     ->update($update_data);
             }

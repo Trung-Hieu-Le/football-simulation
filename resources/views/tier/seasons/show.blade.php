@@ -75,14 +75,14 @@
                 </div>
                 <div class="situations fst-italic fs-6 lh-1 mb-2">
                     <div class="situation-left">
-                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                        @foreach ($matchResult['specialEvents'] as $situation)
                             @if (str_contains($situation, $matchResult['team1_name']))
                                 <p class="mb-0">{{ $situation }}</p>
                             @endif
                         @endforeach
                     </div>
                     <div class="situation-right">
-                        @foreach ($matchResult['dangerousSituations'] as $situation)
+                        @foreach ($matchResult['specialEvents'] as $situation)
                             @if (str_contains($situation, $matchResult['team2_name']))
                                 <p class="mb-0">{{ $situation }}</p>
                             @endif

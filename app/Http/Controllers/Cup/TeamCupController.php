@@ -19,10 +19,10 @@ class TeamCupController extends Controller
             ->orderBy($sort, $direction)
             ->get();
         
-        $teamHistories = DB::table('group_stage_standings')
-            ->join('teams', 'teams.id', '=', 'group_stage_standings.team_id')
-            ->join('seasons', 'seasons.id', '=', 'group_stage_standings.season_id')
-            ->select('group_stage_standings.*', 'teams.name as team_name', 'seasons.season')
+        $teamHistories = DB::table('cup_standings')
+            ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
+            ->join('cup_seasons', 'cup_seasons.id', '=', 'cup_standings.season_id')
+            ->select('cup_standings.*', 'teams.name as team_name', 'cup_seasons.season')
             ->get();
         $regions = DB::table('regions')->get();
 

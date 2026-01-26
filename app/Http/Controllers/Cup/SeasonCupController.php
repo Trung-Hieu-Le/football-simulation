@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Enums\SeasonMeta;
 
 class SeasonCupController extends Controller
 {
@@ -12,24 +13,24 @@ class SeasonCupController extends Controller
     public function index()
     {
         // Lấy danh sách các mùa giải
-        $seasons = DB::table('seasons')->orderBy('season', 'desc')->get();
+        $seasons = DB::table('cup_seasons')->orderBy('season', 'desc')->get();
 
         // Thêm thông tin tỷ lệ trận và vòng vào từng season
         $seasons = $seasons->map(function ($season) {
             // Tổng số trận của mùa giải
-            $totalMatches = DB::table('group_stage_matches')
+            $totalMatches = DB::table('cup_group_stage_matches')
                 ->where('season_id', $season->id)
                 ->count();
             $champion = DB::table('teams')
                 ->select('teams.*')
-                ->join('group_stage_standings', 'teams.id', 'group_stage_standings.team_id')
+                ->join('cup_standings', 'teams.id', 'cup_standings.team_id')
                 ->where('season_id', $season->id)
-                ->where('group_stage_standings.title', 'champion')
+                ->where('cup_standings.title', 'champion')
                 ->first();
             // dd($champion);
 
             // Số trận đã có tỉ số
-            $completedMatchesCount = DB::table('group_stage_matches')
+            $completedMatchesCount = DB::table('cup_group_stage_matches')
                 ->where('season_id', $season->id)
                 ->whereNotNull('team1_score')
                 ->whereNotNull('team2_score')
@@ -39,7 +40,7 @@ class SeasonCupController extends Controller
             $matchCompletionRate = $totalMatches > 0 ? ($completedMatchesCount / $totalMatches) * 100 : 0;
 
             // Xác định round hiện tại và round tối đa
-            $currentRound = DB::table('group_stage_matches')
+            $currentRound = DB::table('cup_group_stage_matches')
                 ->where('season_id', $season->id)
                 ->where(function ($query) {
                     $query->whereNull('team1_score')
@@ -77,33 +78,34 @@ class SeasonCupController extends Controller
     // Xóa season
     public function destroy($id)
     {
-        DB::table('group_stage_standings')->where('season_id', $id)->delete();
-        DB::table('eliminate_stage_matches')->where('season_id', $id)->delete();
-        DB::table('group_stage_matches')->where('season_id', $id)->delete();
-        DB::table('group_teams')->where('season_id', $id)->delete();
-        DB::table('seasons')->where('id', $id)->delete();
+        DB::table('cup_standings')->where('season_id', $id)->delete();
+        DB::table('cup_eliminate_stage_matches')->where('season_id', $id)->delete();
+        DB::table('cup_group_stage_matches')->where('season_id', $id)->delete();
+        DB::table('cup_group_teams')->where('season_id', $id)->delete();
+        DB::table('cup_seasons')->where('id', $id)->delete();
         return redirect()->route('cup.seasons.index')->with('success', 'Season deleted successfully.');
     }
 
     // Xóa season all
     public function destroyAll()
     {
-        DB::table('group_stage_standings')->delete();
-        DB::table('group_stage_matches')->delete();
-        DB::table('group_teams')->delete();
-        DB::table('seasons')->delete();
+        DB::table('cup_standings')->delete();
+        DB::table('cup_group_stage_matches')->delete();
+        DB::table('cup_group_teams')->delete();
+        DB::table('cup_seasons')->delete();
         return redirect()->route('cup.seasons.index')->with('success', 'Season deleted successfully.');
     }
 
     // Hiển thị form tạo mới
     public function create()
     {
-        $lastSeason = DB::table('seasons')->orderBy('id', 'desc')->first();
+        $lastSeason = DB::table('cup_seasons')->orderBy('id', 'desc')->first();
 
         $nextSeason = $lastSeason ? $lastSeason->season + 1 : 1;
+        $listTeamsCount = [32, 64];
         $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 64;
 
-        return view('cup.seasons.create', compact('nextSeason', 'nextTeamsCount'));
+        return view('cup.seasons.create', compact('nextSeason', 'nextTeamsCount', 'listTeamsCount'));
     }
 
 
@@ -111,12 +113,12 @@ class SeasonCupController extends Controller
     // Hiển thị chi tiết season
     public function show($id)
     {
-        $season = DB::table('seasons')->where('id', $id)->first();
+        $season = DB::table('cup_seasons')->where('id', $id)->first();
 
         // Lấy thông tin bảng xếp hạng từ histories
-        $groupStandings = DB::table('group_stage_standings')
-            ->select('group_stage_standings.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
-            ->join('teams', 'teams.id', 'group_stage_standings.team_id')
+        $groupStandings = DB::table('cup_standings')
+            ->select('cup_standings.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
+            ->join('teams', 'teams.id', 'cup_standings.team_id')
             ->where('season_id', $id)
             ->orderBy('group', 'asc')
             ->orderBy('position', 'asc')
@@ -124,7 +126,7 @@ class SeasonCupController extends Controller
             ->groupBy('group');
 
         //TODO: currentRound không vượt quá giá trị quy định
-        $currentRound = DB::table('group_stage_matches')
+        $currentRound = DB::table('cup_group_stage_matches')
             ->where('season_id', $id)
             ->where(function ($query) {
                 $query->whereNull('team1_score')
@@ -138,15 +140,15 @@ class SeasonCupController extends Controller
         $promotionRelegationCount = floor($season->teams_count - 32);
 
         // Lấy thông tin các trận đấu đã xảy ra và sắp tới
-        $completedMatches = DB::table('group_stage_matches')
-            ->join('teams as t1', 'group_stage_matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'group_stage_matches.team2_id', '=', 't2.id')
-            ->where('group_stage_matches.team1_score', '!=', null)
-            ->where('group_stage_matches.team2_score', '!=', null)
-            ->where('group_stage_matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
-            ->where('group_stage_matches.season_id', $id)
+        $completedMatches = DB::table('cup_group_stage_matches')
+            ->join('teams as t1', 'cup_group_stage_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'cup_group_stage_matches.team2_id', '=', 't2.id')
+            ->where('cup_group_stage_matches.team1_score', '!=', null)
+            ->where('cup_group_stage_matches.team2_score', '!=', null)
+            ->where('cup_group_stage_matches.round', '=', $currentRound - 1) // Chỉ lấy round trước
+            ->where('cup_group_stage_matches.season_id', $id)
             ->select(
-                'group_stage_matches.*',
+                'cup_group_stage_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -159,13 +161,13 @@ class SeasonCupController extends Controller
             ->get();
 
         // Lọc các trận đấu sắp tới
-        $nextMatches = DB::table('group_stage_matches')
-            ->join('teams as t1', 'group_stage_matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'group_stage_matches.team2_id', '=', 't2.id')
-            ->where('group_stage_matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
-            ->where('group_stage_matches.season_id', $id)
+        $nextMatches = DB::table('cup_group_stage_matches')
+            ->join('teams as t1', 'cup_group_stage_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'cup_group_stage_matches.team2_id', '=', 't2.id')
+            ->where('cup_group_stage_matches.round', '=', $currentRound) // Chỉ lấy round hiện tại
+            ->where('cup_group_stage_matches.season_id', $id)
             ->select(
-                'group_stage_matches.*',
+                'cup_group_stage_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -184,11 +186,11 @@ class SeasonCupController extends Controller
     public function listMatches(Request $request)
     {
         $seasonId = $request->id;
-        $matchesByRound = DB::table('group_stage_matches')->orderBy('round')
-            ->join('teams as t1', 'group_stage_matches.team1_id', '=', 't1.id')
-            ->join('teams as t2', 'group_stage_matches.team2_id', '=', 't2.id')
+        $matchesByRound = DB::table('cup_group_stage_matches')->orderBy('round')
+            ->join('teams as t1', 'cup_group_stage_matches.team1_id', '=', 't1.id')
+            ->join('teams as t2', 'cup_group_stage_matches.team2_id', '=', 't2.id')
             ->select(
-                'group_stage_matches.*',
+                'cup_group_stage_matches.*',
                 't1.name as team1_name',
                 't2.name as team2_name',
                 't1.color_1 as team1_c1',
@@ -207,7 +209,7 @@ class SeasonCupController extends Controller
     {
         $sortBy = $request->get('sort_by', 'points');
         $seasonId = $request->id;
-        $histories = DB::table('group_stage_standings')->selectRaw("
+        $histories = DB::table('cup_standings')->selectRaw("
             team_id,
             SUM(match_played) as matches_played,
             SUM(goal_scored) as goals_scored,
@@ -221,7 +223,7 @@ class SeasonCupController extends Controller
             SUM(lose) as loses,
             teams.name as team_name, teams.color_1 as team_c1, teams.color_2 as team_c2, teams.color_3 as team_c3
         ")
-            ->join('teams', 'group_stage_standings.team_id', '=', 'teams.id')
+            ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
             ->where('season_id', $seasonId)
             ->groupBy('team_id', 'teams.name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
             ->orderBy($sortBy, 'desc')
@@ -241,9 +243,8 @@ class SeasonCupController extends Controller
             return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 32.']);
         }
 
-        $metaOptions = ['possession', 'counter', 'pressing', 'tiki-taka', 'long_ball', 'build_up', 'low_block', 'high_risk', 'high_line'];
-        $meta = $request->meta ?: $metaOptions[array_rand($metaOptions)];
-        $seasonId = DB::table('seasons')->insertGetId([
+        $meta = $request->meta ?: SeasonMeta::random();
+        $seasonId = DB::table('cup_seasons')->insertGetId([
             'season' => $request->season,
             'teams_count' => $request->teams_count,
             'meta' => $meta,
@@ -295,8 +296,8 @@ class SeasonCupController extends Controller
             ];
         }
 
-        // Lưu dữ liệu vào bảng group_teams
-        DB::table('group_teams')->insert($groupData);
+        // Lưu dữ liệu vào bảng cup_group_teams
+        DB::table('cup_group_teams')->insert($groupData);
 
         // Gọi các hàm khởi tạo standings và matches
         $this->makeGroupStageStandings($seasonId, $groupData);
@@ -326,8 +327,8 @@ class SeasonCupController extends Controller
             }
         }
 
-        // Lưu vào bảng group_stage_standings
-        DB::table('group_stage_standings')->insert($standings);
+        // Lưu vào bảng cup_standings
+        DB::table('cup_standings')->insert($standings);
     }
 
     private function makeGroupStageMatches($seasonId, $groups)
@@ -375,25 +376,25 @@ class SeasonCupController extends Controller
             }
         }
         $matches = collect($matches)->sortBy('round')->values()->toArray();
-        DB::table('group_stage_matches')->insert($matches);
+        DB::table('cup_group_stage_matches')->insert($matches);
     }
 
     public function createEliminateStage($seasonId)
     {
-        // Kiểm tra nếu group_stage_standings của season hiện tại có đủ 32 match thì thôi không cần thêm match mới vào nữa
-        $existingMatchesCount = DB::table('eliminate_stage_matches')
+        // Kiểm tra nếu cup_standings của season hiện tại có đủ 32 match thì thôi không cần thêm match mới vào nữa
+        $existingMatchesCount = DB::table('cup_eliminate_stage_matches')
             ->where('season_id', $seasonId)
             ->count();
         if ($existingMatchesCount >= 32) {
             return redirect()->route('cup.seasons.index')->with('fail', 'Season already have eliminate.');
         }
 
-        $topTeams = DB::table('group_stage_standings')
-            ->join('teams', 'group_stage_standings.team_id', '=', 'teams.id')
-            ->whereIn('group_stage_standings.position', [1, 2, 3, 4]) // Chỉ lấy từ vị trí 1 đến 4
-            ->where('group_stage_standings.season_id', $seasonId)
-            ->orderBy('group_stage_standings.group', 'asc')
-            ->orderBy('group_stage_standings.position', 'asc')
+        $topTeams = DB::table('cup_standings')
+            ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
+            ->whereIn('cup_standings.position', [1, 2, 3, 4]) // Chỉ lấy từ vị trí 1 đến 4
+            ->where('cup_standings.season_id', $seasonId)
+            ->orderBy('cup_standings.group', 'asc')
+            ->orderBy('cup_standings.position', 'asc')
             ->get()
             ->groupBy('group'); // Nhóm theo `group`
 
@@ -460,7 +461,7 @@ class SeasonCupController extends Controller
             }
         }
         // dd($matches);
-        DB::table('eliminate_stage_matches')->insert($matches);
+        DB::table('cup_eliminate_stage_matches')->insert($matches);
         return redirect()->route('cup.seasons.index')->with('success', 'Season deleted successfully.');
     }
 }

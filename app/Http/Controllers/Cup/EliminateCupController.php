@@ -10,13 +10,13 @@ class EliminateCupController extends Controller
 {
     public function view($seasonId)
     {
-        $season = DB::table('seasons')->where('id', $seasonId)->first();
+        $season = DB::table('cup_seasons')->where('id', $seasonId)->first();
 
-        $matches = DB::table('eliminate_stage_matches')
-            ->leftJoin('teams as team1', 'eliminate_stage_matches.team1_id', '=', 'team1.id')
-            ->leftJoin('teams as team2', 'eliminate_stage_matches.team2_id', '=', 'team2.id')
+        $matches = DB::table('cup_eliminate_stage_matches')
+            ->leftJoin('teams as team1', 'cup_eliminate_stage_matches.team1_id', '=', 'team1.id')
+            ->leftJoin('teams as team2', 'cup_eliminate_stage_matches.team2_id', '=', 'team2.id')
             ->select(
-                'eliminate_stage_matches.*',
+                'cup_eliminate_stage_matches.*',
                 'team1.name as team1_name',
                 'team1.color_1 as team1_c1',
                 'team1.color_2 as team1_c2',
@@ -26,10 +26,10 @@ class EliminateCupController extends Controller
                 'team2.color_2 as team2_c2',
                 'team2.color_3 as team2_c3'
             )
-            ->where('eliminate_stage_matches.season_id', $seasonId)
+            ->where('cup_eliminate_stage_matches.season_id', $seasonId)
             ->orderBy('id', 'asc')
             ->get();
-        $currentRound = DB::table('eliminate_stage_matches')
+        $currentRound = DB::table('cup_eliminate_stage_matches')
             ->where('season_id', $seasonId)
             ->where(function ($query) {
                 $query->whereNull('team1_score')
@@ -38,7 +38,7 @@ class EliminateCupController extends Controller
             ->orderBy('id', 'asc')
             ->value('round');
 
-        $lastRound = DB::table('eliminate_stage_matches')
+        $lastRound = DB::table('cup_eliminate_stage_matches')
             ->where('season_id', $seasonId)
             ->where(function ($query) {
                 $query->whereNotNull('team1_score')
@@ -53,10 +53,10 @@ class EliminateCupController extends Controller
         $completedMatches = $matches->filter(fn($match) => $match->round === $lastRound && !is_null($match->team1_score) && !is_null($match->team2_score));
 
         $champion = DB::table('teams')
-            ->join('eliminate_stage_matches', 'teams.id', '=', 'eliminate_stage_matches.winner_id')
-            ->select('teams.name as team_name', 'eliminate_stage_matches.id')
-            ->where('eliminate_stage_matches.season_id', $seasonId)
-            ->where('eliminate_stage_matches.round', 'final')
+            ->join('cup_eliminate_stage_matches', 'teams.id', '=', 'cup_eliminate_stage_matches.winner_id')
+            ->select('teams.name as team_name', 'cup_eliminate_stage_matches.id')
+            ->where('cup_eliminate_stage_matches.season_id', $seasonId)
+            ->where('cup_eliminate_stage_matches.round', 'final')
             ->where(function ($query) {
                 $query->whereNotNull('team1_score')
                     ->whereNotNull('team2_score');
@@ -103,15 +103,15 @@ class EliminateCupController extends Controller
 {
     $sortBy = $request->query('sort_by', 'points'); // Mặc định sắp xếp theo 'points'
 
-    $histories = DB::table('group_stage_standings')
-        ->join('teams', 'group_stage_standings.team_id', '=', 'teams.id')
+    $histories = DB::table('cup_standings')
+        ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
         ->select(
             'teams.name as team_name',
-            'group_stage_standings.*'
+            'cup_standings.*'
         )
-        ->where('group_stage_standings.season_id', $seasonId)
-        ->whereBetween('group_stage_standings.position', [1, 4]) // Lấy các vị trí từ 1 đến 4
-        ->orderBy("group_stage_standings.{$sortBy}", 'desc')
+        ->where('cup_standings.season_id', $seasonId)
+        ->whereBetween('cup_standings.position', [1, 4]) // Lấy các vị trí từ 1 đến 4
+        ->orderBy("cup_standings.{$sortBy}", 'desc')
         ->get();
     return view('cup.eliminate.statistics', compact('histories', 'seasonId', 'sortBy'));
 }

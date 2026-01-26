@@ -11,24 +11,24 @@ class StatisticTierController extends Controller
     public function index()
     {
         // 1. Top 4 teams by points (All seasons, Tier 1)
-        $topTeams = DB::table('histories')
+        $topTeams = DB::table('tier_standings')
             ->where('tier', 'tier1')
             ->whereIn('position', [1, 2, 3, 4])
             ->select('season_id', 'team_id', 'position', 'points')
-            ->join('teams', 'teams.id', '=', 'histories.team_id')
-            ->join('seasons', 'seasons.id', '=', 'histories.season_id')
-            ->selectRaw('seasons.season as season, teams.name as team_name, histories.position, histories.points')
-            ->groupBy('season_id', 'position', 'histories.team_id', 'points')
+            ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
+            ->join('tier_seasons', 'tier_seasons.id', '=', 'tier_standings.season_id')
+            ->selectRaw('tier_seasons.season as season, teams.name as team_name, tier_standings.position, tier_standings.points')
+            ->groupBy('season_id', 'position', 'tier_standings.team_id', 'points', 'tier_seasons.season', 'teams.name', 'teams.region')
             ->orderBy('season_id')
             ->get()
             ->groupBy('season');
 
 
         // 2. Teams with the most championships (Position 1, Tier 1)
-        $champions = DB::table('histories')
-            ->join('teams', 'histories.team_id', '=', 'teams.id')
-            ->where('histories.tier', 'tier1')
-            ->where('histories.position', 1)
+        $champions = DB::table('tier_standings')
+            ->join('teams', 'tier_standings.team_id', '=', 'teams.id')
+            ->where('tier_standings.tier', 'tier1')
+            ->where('tier_standings.position', 1)
             ->select('teams.name', 'teams.region', DB::raw('COUNT(*) as championships'))
             ->groupBy('teams.name', 'teams.region')
             ->orderByDesc('championships')
@@ -44,28 +44,28 @@ class StatisticTierController extends Controller
         // 3. Additional statistics
         $statistics = [
             // Top 5 Teams with Highest Points
-            'highest_points' => DB::table('histories')
-                ->join('teams', 'teams.id', '=', 'histories.team_id')
+            'highest_points' => DB::table('tier_standings')
+                ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
                 ->where('tier', 'tier1')
-                ->select('teams.name as team_name', 'histories.points')
+                ->select('teams.name as team_name', 'tier_standings.points')
                 ->where('position', 1)
                 ->orderByDesc('points')
                 ->take(5)
                 ->get(),
         
             // Top 5 Teams with Lowest Points
-            'lowest_points' => DB::table('histories')
-                ->join('teams', 'teams.id', '=', 'histories.team_id')
+            'lowest_points' => DB::table('tier_standings')
+                ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
                 ->where('tier', 'tier1')
-                ->select('teams.name as team_name', 'histories.points')
+                ->select('teams.name as team_name', 'tier_standings.points')
                 ->where('position', 1)
                 ->orderBy('points')
                 ->take(5)
                 ->get(),
         
             // Largest Point Gap between 1st and 2nd place
-            'largest_gap' => DB::table('histories as h1')
-                ->join('histories as h2', function ($join) {
+            'largest_gap' => DB::table('tier_standings as h1')
+                ->join('tier_standings as h2', function ($join) {
                     $join->on('h1.season_id', '=', 'h2.season_id')
                         ->where('h1.tier', '=', 'tier1')
                         ->where('h2.tier', '=', 'tier1')
@@ -80,8 +80,8 @@ class StatisticTierController extends Controller
                 ->get(),
         
             // Smallest Point Gap between 1st and 2nd place
-            'smallest_gap' => DB::table('histories as h1')
-                ->join('histories as h2', function ($join) {
+            'smallest_gap' => DB::table('tier_standings as h1')
+                ->join('tier_standings as h2', function ($join) {
                     $join->on('h1.season_id', '=', 'h2.season_id')
                         ->where('h1.tier', '=', 'tier1')
                         ->where('h2.tier', '=', 'tier1')
@@ -96,8 +96,8 @@ class StatisticTierController extends Controller
                 ->get(),
         
             // Team with Most Top 4 Appearances
-            'most_top4_appearances' => DB::table('histories')
-                ->join('teams', 'teams.id', '=', 'histories.team_id')
+            'most_top4_appearances' => DB::table('tier_standings')
+                ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
                 ->where('tier', 'tier1')
                 ->whereBetween('position', [1, 4])
                 ->select('teams.name as team_name', DB::raw('COUNT(*) as top4_count'))
@@ -109,25 +109,25 @@ class StatisticTierController extends Controller
         
 
         // 4. Top 5 Teams (Win, Draw, Lose)
-        $topWinTeams = DB::table('histories')
-            ->join('teams', 'histories.team_id', '=', 'teams.id')
-            ->select('teams.name', DB::raw('SUM(histories.win) as total_win'))
+        $topWinTeams = DB::table('tier_standings')
+            ->join('teams', 'tier_standings.team_id', '=', 'teams.id')
+            ->select('teams.name', DB::raw('SUM(tier_standings.win) as total_win'))
             ->groupBy('teams.name')
             ->orderByDesc('total_win')
             ->take(5)
             ->get();
 
-        $topDrawTeams = DB::table('histories')
-            ->join('teams', 'histories.team_id', '=', 'teams.id')
-            ->select('teams.name', DB::raw('SUM(histories.draw) as total_draw'))
+        $topDrawTeams = DB::table('tier_standings')
+            ->join('teams', 'tier_standings.team_id', '=', 'teams.id')
+            ->select('teams.name', DB::raw('SUM(tier_standings.draw) as total_draw'))
             ->groupBy('teams.name')
             ->orderByDesc('total_draw')
             ->take(5)
             ->get();
 
-        $topLoseTeams = DB::table('histories')
-            ->join('teams', 'histories.team_id', '=', 'teams.id')
-            ->select('teams.name', DB::raw('SUM(histories.lose) as total_lose'))
+        $topLoseTeams = DB::table('tier_standings')
+            ->join('teams', 'tier_standings.team_id', '=', 'teams.id')
+            ->select('teams.name', DB::raw('SUM(tier_standings.lose) as total_lose'))
             ->groupBy('teams.name')
             ->orderByDesc('total_lose')
             ->take(5)
@@ -135,10 +135,10 @@ class StatisticTierController extends Controller
 
         // 5. Top 5 Teams with highest stats but never won a championship
         $highestStatsNoChampion = DB::table('teams')
-            ->join('histories', 'teams.id', '=', 'histories.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.aggressive + teams.penalty)) as total_stats'))
+            ->join('tier_standings', 'teams.id', '=', 'tier_standings.team_id')
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
             ->whereNotIn('teams.id', function ($query) {
-                $query->select('team_id')->from('histories')->where('position', 1);
+                $query->select('team_id')->from('tier_standings')->where('position', 1);
             })
             ->groupBy('teams.name')
             ->orderByDesc('total_stats')
@@ -149,10 +149,10 @@ class StatisticTierController extends Controller
 
         // 6. Top 5 Teams with lowest stats that have won a championship
         $lowestStatsChampion = DB::table('teams')
-            ->join('histories', 'teams.id', '=', 'histories.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.aggressive + teams.penalty)) as total_stats'))
+            ->join('tier_standings', 'teams.id', '=', 'tier_standings.team_id')
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
             ->whereIn('teams.id', function ($query) {
-                $query->select('team_id')->from('histories')->where('position', 1);
+                $query->select('team_id')->from('tier_standings')->where('position', 1);
             })
             ->groupBy('teams.name')
             ->orderBy('total_stats')
