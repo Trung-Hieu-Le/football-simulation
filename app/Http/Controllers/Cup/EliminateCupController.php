@@ -105,12 +105,15 @@ class EliminateCupController extends Controller
 
     $histories = DB::table('cup_standings')
         ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
+        ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
         ->select(
             'teams.name as team_name',
-            'cup_standings.*'
+            'cup_standings.*',
+            'cup_positions.position',
+            'cup_positions.result'
         )
         ->where('cup_standings.season_id', $seasonId)
-        ->whereBetween('cup_standings.position', [1, 4]) // Lấy các vị trí từ 1 đến 4
+        ->whereBetween('cup_positions.position', [1, 4]) // Lấy các vị trí từ 1 đến 4
         ->orderBy("cup_standings.{$sortBy}", 'desc')
         ->get();
     return view('cup.eliminate.statistics', compact('histories', 'seasonId', 'sortBy'));

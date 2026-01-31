@@ -12,12 +12,13 @@ class StatisticCupController extends Controller
     {
         // 1. Top 4 teams by points (All seasons, Tier 1)
         $topTeams = DB::table('cup_standings')
-            ->whereIn('title', ['champion', 'runner_up', '3rd_place', '4th_place']) 
-            ->select('season_id', 'team_id', 'position', 'points')
+            ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+            ->whereIn('cup_positions.result', ['champion', 'runner_up', '3rd_place', '4th_place']) 
+            ->select('cup_standings.season_id', 'team_id', 'cup_positions.position', 'points')
             ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
             ->join('cup_seasons', 'cup_seasons.id', '=', 'cup_standings.season_id')
-            ->selectRaw('cup_seasons.season as season, teams.name as team_name, cup_standings.position, cup_standings.points')
-            ->groupBy('season_id', 'position', 'cup_standings.team_id', 'points', 'cup_seasons.season', 'teams.name')
+            ->selectRaw('cup_seasons.season as season, teams.name as team_name, cup_positions.position, cup_standings.points')
+            ->groupBy('season_id', 'cup_positions.position', 'cup_standings.team_id', 'points', 'cup_seasons.season', 'teams.name')
             ->orderBy('season_id', 'desc')
             ->get()
             ->groupBy('season');
@@ -25,7 +26,8 @@ class StatisticCupController extends Controller
         // 2. Teams with the most championships (Position 1, Tier 1)
         $champions = DB::table('teams')
             ->leftJoin('cup_standings', 'teams.id', '=', 'cup_standings.team_id')
-            ->where('cup_standings.title', 'champion')
+            ->leftJoin('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+            ->where('cup_positions.result', 'champion')
             ->select('teams.name', 'teams.region', DB::raw('COUNT(cup_standings.id) as championships'))
             ->groupBy('teams.name', 'teams.region')
             ->orderByDesc('championships')
@@ -43,8 +45,9 @@ class StatisticCupController extends Controller
         $statistics = [
             // Top 5 Teams with Highest Points
             'highest_points' => DB::table('cup_standings')
+                ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
                 ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
-                ->where('title', 'champion')
+                ->where('cup_positions.result', 'champion')
                 ->select('teams.name as team_name', 'cup_standings.points')
                 ->orderByDesc('points')
                 ->take(5)
@@ -52,8 +55,9 @@ class StatisticCupController extends Controller
         
             // Top 5 Teams with Lowest Points
             'lowest_points' => DB::table('cup_standings')
+                ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
                 ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
-                ->where('title', 'champion')
+                ->where('cup_positions.result', 'champion')
                 ->select('teams.name as team_name', 'cup_standings.points')
                 ->orderBy('points')
                 ->take(5)
@@ -61,11 +65,11 @@ class StatisticCupController extends Controller
         
             // Largest Point Gap between 1st and 2nd place
             'largest_gap' => DB::table('cup_standings as h1')
-                ->join('cup_standings as h2', function ($join) {
-                    $join->on('h1.season_id', '=', 'h2.season_id')
-                        ->where('h1.title', '=', 'champion')
-                        ->where('h2.title', '=', 'runner_up');
-                })
+                ->join('cup_positions as p1', 'p1.cup_standing_id', '=', 'h1.id')
+                ->join('cup_standings as h2', 'h1.season_id', '=', 'h2.season_id')
+                ->join('cup_positions as p2', 'p2.cup_standing_id', '=', 'h2.id')
+                ->where('p1.result', '=', 'champion')
+                ->where('p2.result', '=', 'runner_up')
                 ->join('teams as t1', 't1.id', '=', 'h1.team_id')
                 ->join('teams as t2', 't2.id', '=', 'h2.team_id')
                 ->selectRaw('MAX(h1.points - h2.points) as gap, t1.name as team1_name, t2.name as team2_name')
@@ -75,11 +79,11 @@ class StatisticCupController extends Controller
         
             // Smallest Point Gap between 1st and 2nd place
             'smallest_gap' => DB::table('cup_standings as h1')
-                ->join('cup_standings as h2', function ($join) {
-                    $join->on('h1.season_id', '=', 'h2.season_id')
-                        ->where('h1.title', '=', 'champion')
-                        ->where('h2.title', '=', 'runner_up');
-                })
+                ->join('cup_positions as p1', 'p1.cup_standing_id', '=', 'h1.id')
+                ->join('cup_standings as h2', 'h1.season_id', '=', 'h2.season_id')
+                ->join('cup_positions as p2', 'p2.cup_standing_id', '=', 'h2.id')
+                ->where('p1.result', '=', 'champion')
+                ->where('p2.result', '=', 'runner_up')
                 ->join('teams as t1', 't1.id', '=', 'h1.team_id')
                 ->join('teams as t2', 't2.id', '=', 'h2.team_id')
                 ->selectRaw('MIN(h1.points - h2.points) as gap, t1.name as team1_name, t2.name as team2_name')
@@ -89,8 +93,9 @@ class StatisticCupController extends Controller
         
             // Team with Most Top 4 Appearances
             'most_top4_appearances' => DB::table('cup_standings')
+                ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
                 ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
-                ->whereIn('title', ['champion', 'runner_up', '3rd_place', '4th_place']) 
+                ->whereIn('cup_positions.result', ['champion', 'runner_up', '3rd_place', '4th_place']) 
                 ->select('teams.name as team_name', DB::raw('COUNT(*) as top4_count'))
                 ->groupBy('teams.name')
                 ->orderByDesc('top4_count')
@@ -127,9 +132,12 @@ class StatisticCupController extends Controller
         // 5. Top 5 Teams with highest stats but never won a championship
         $highestStatsNoChampion = DB::table('teams')
             ->join('cup_standings', 'teams.id', '=', 'cup_standings.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.creative + teams.pace + teams.mental + teams.discipline)) as total_stats'))
             ->whereNotIn('teams.id', function ($query) {
-                $query->select('team_id')->from('cup_standings')->where('title', 'champion');
+                $query->select('cup_standings.team_id')
+                    ->from('cup_standings')
+                    ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+                    ->where('cup_positions.result', 'champion');
             })
             ->groupBy('teams.name')
             ->orderByDesc('total_stats')
@@ -139,9 +147,12 @@ class StatisticCupController extends Controller
         // 6. Top 5 Teams with lowest stats that have won a championship
         $lowestStatsChampion = DB::table('teams')
             ->join('cup_standings', 'teams.id', '=', 'cup_standings.team_id')
-            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.pass + teams.speed + teams.mental + teams.discipline)) as total_stats'))
+            ->select('teams.name', DB::raw('SUM(DISTINCT (teams.attack + teams.defense + teams.control + teams.stamina + teams.creative + teams.pace + teams.mental + teams.discipline)) as total_stats'))
             ->whereIn('teams.id', function ($query) {
-                $query->select('team_id')->from('cup_standings')->where('title', 'champion');
+                $query->select('cup_standings.team_id')
+                    ->from('cup_standings')
+                    ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+                    ->where('cup_positions.result', 'champion');
             })
             ->groupBy('teams.name')
             ->orderBy('total_stats')

@@ -45,7 +45,7 @@ class MatchHistoryService
         $form = max(5, min(100, $form));
         DB::table('teams')->where('id', $teamId)->update(['form' => $form]);
         
-        DB::table('cup_standings')->updateOrInsert(
+        $standing = DB::table('cup_standings')->updateOrInsert(
             ['team_id' => $teamId, 'season_id' => $seasonId],
             [
                 'match_played' => $matchPlayed,
@@ -54,13 +54,30 @@ class MatchHistoryService
                 'goal_difference' => $goalDifference,
                 'foul' => $totalFouls,
                 'average_possession' => round($averagePossession, 2),
-                'title' => $title,
                 'win' => $win,
                 'draw' => $draw,
                 'lose' => $lose,
                 'updated_at' => now(),
             ]
         );
+        
+        // Update position và result vào cup_positions
+        $standingId = DB::table('cup_standings')
+            ->where('team_id', $teamId)
+            ->where('season_id', $seasonId)
+            ->value('id');
+        
+        if ($standingId) {
+            DB::table('cup_positions')->updateOrInsert(
+                ['cup_standing_id' => $standingId],
+                [
+                    'season_id' => $seasonId,
+                    'result' => $title,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
     
     /**
@@ -211,11 +228,28 @@ class MatchHistoryService
                 })->values();
                 
                 foreach ($sortedTeams as $index => $team) {
-                    DB::table('cup_standings')
+                    // Update position vào cup_positions
+                    $standingId = DB::table('cup_standings')
                         ->where('team_id', $team->team_id)
                         ->where('season_id', $seasonId)
                         ->where('group', $group)
-                        ->update(['position' => $index + 1]);
+                        ->value('id');
+                    
+                    if ($standingId) {
+                        $seasonIdFromStanding = DB::table('cup_standings')
+                            ->where('id', $standingId)
+                            ->value('season_id');
+                        
+                        DB::table('cup_positions')->updateOrInsert(
+                            ['cup_standing_id' => $standingId],
+                            [
+                                'season_id' => $seasonIdFromStanding,
+                                'position' => $index + 1,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
+                    }
                 }
             }
         } elseif ($type === 'tier') {
@@ -243,11 +277,28 @@ class MatchHistoryService
                 })->values();
                 
                 foreach ($sortedTeams as $index => $team) {
-                    DB::table('tier_standings')
+                    // Update position vào tier_positions
+                    $standingId = DB::table('tier_standings')
                         ->where('team_id', $team->team_id)
                         ->where('season_id', $seasonId)
                         ->where('tier', $tier)
-                        ->update(['position' => $index + 1]);
+                        ->value('id');
+                    
+                    if ($standingId) {
+                        $seasonIdFromStanding = DB::table('tier_standings')
+                            ->where('id', $standingId)
+                            ->value('season_id');
+                        
+                        DB::table('tier_positions')->updateOrInsert(
+                            ['tier_standing_id' => $standingId],
+                            [
+                                'season_id' => $seasonIdFromStanding,
+                                'position' => $index + 1,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
+                    }
                 }
             }
         }

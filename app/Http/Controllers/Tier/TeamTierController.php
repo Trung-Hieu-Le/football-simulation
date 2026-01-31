@@ -15,14 +15,16 @@ class TeamTierController extends Controller
         $direction = $request->input('direction', 'asc');  // Hướng sắp xếp, mặc định là 'asc'
         // Lấy tất cả các đội bóng
         $teams = DB::table('teams')
-        ->selectRaw('*, (attack + defense + control + stamina + pass + speed + mental + discipline) as total') // Tính tổng cộng
+        ->selectRaw('*, (attack + creative + control + pace + defense + mental + discipline + stamina) as total') // Tính tổng cộng
         ->orderBy($sort, $direction)
         ->get();
         
         $teamHistories = DB::table('tier_standings')
         ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
         ->join('tier_seasons', 'tier_seasons.id', '=', 'tier_standings.season_id')
-        ->select('tier_standings.*', 'teams.name as team_name', 'tier_seasons.season')
+        ->leftJoin('tier_positions', 'tier_positions.tier_standing_id', '=', 'tier_standings.id')
+        ->select('tier_standings.*', 'teams.name as team_name', 'tier_seasons.season',
+                 'tier_positions.position', 'tier_positions.result')
         ->get();
         $regions = DB::table('regions')->get();
 
@@ -44,11 +46,11 @@ class TeamTierController extends Controller
         'name' => $request->name,
 
         'attack' => $request->attack,
-        'defense' => $request->defense,
+        'creative' => $request->creative,
         'control' => $request->control,
+        'pace' => $request->pace,
+        'defense' => $request->defense,
         'stamina' => $request->stamina,
-        'pass' => $request->pass,
-        'speed' => $request->speed,
         'mental' => $request->mental,
         'discipline' => $request->discipline,
         'form' => $request->form,
@@ -70,7 +72,9 @@ class TeamTierController extends Controller
         $histories = DB::table('tier_standings')
             ->where('team_id', $id)
             ->join('tier_seasons', 'tier_seasons.id', '=', 'tier_standings.season_id')
-            ->select('tier_standings.*', 'tier_seasons.season')
+            ->leftJoin('tier_positions', 'tier_positions.tier_standing_id', '=', 'tier_standings.id')
+            ->select('tier_standings.*', 'tier_seasons.season',
+                     'tier_positions.position', 'tier_positions.result')
             ->get();
 
         return view('tier.teams.history', compact('team', 'histories'));

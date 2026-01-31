@@ -21,11 +21,12 @@ class SeasonCupController extends Controller
             $totalMatches = DB::table('cup_group_stage_matches')
                 ->where('season_id', $season->id)
                 ->count();
-            $champion = DB::table('teams')
+                $champion = DB::table('teams')
                 ->select('teams.*')
                 ->join('cup_standings', 'teams.id', 'cup_standings.team_id')
-                ->where('season_id', $season->id)
-                ->where('cup_standings.title', 'champion')
+                ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+                ->where('cup_standings.season_id', $season->id)
+                ->where('cup_positions.result', 'champion')
                 ->first();
             // dd($champion);
 
@@ -79,6 +80,7 @@ class SeasonCupController extends Controller
     public function destroy($id)
     {
         DB::table('cup_standings')->where('season_id', $id)->delete();
+        DB::table('cup_positions')->where('season_id', $id)->delete();
         DB::table('cup_eliminate_stage_matches')->where('season_id', $id)->delete();
         DB::table('cup_group_stage_matches')->where('season_id', $id)->delete();
         DB::table('cup_group_teams')->where('season_id', $id)->delete();
@@ -90,6 +92,7 @@ class SeasonCupController extends Controller
     public function destroyAll()
     {
         DB::table('cup_standings')->delete();
+        DB::table('cup_positions')->delete();
         DB::table('cup_group_stage_matches')->delete();
         DB::table('cup_group_teams')->delete();
         DB::table('cup_seasons')->delete();
@@ -102,7 +105,7 @@ class SeasonCupController extends Controller
         $lastSeason = DB::table('cup_seasons')->orderBy('id', 'desc')->first();
 
         $nextSeason = $lastSeason ? $lastSeason->season + 1 : 1;
-        $listTeamsCount = [32, 64];
+        $listTeamsCount = [64, 32];
         $nextTeamsCount = $lastSeason ? $lastSeason->teams_count : 64;
 
         return view('cup.seasons.create', compact('nextSeason', 'nextTeamsCount', 'listTeamsCount'));
@@ -117,11 +120,13 @@ class SeasonCupController extends Controller
 
         // Lấy thông tin bảng xếp hạng từ histories
         $groupStandings = DB::table('cup_standings')
-            ->select('cup_standings.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3')
+            ->select('cup_standings.*', 'teams.name as team_name', 'teams.color_1', 'teams.color_2', 'teams.color_3',
+                     'cup_positions.position', 'cup_positions.result')
             ->join('teams', 'teams.id', 'cup_standings.team_id')
+            ->leftJoin('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
             ->where('season_id', $id)
             ->orderBy('group', 'asc')
-            ->orderBy('position', 'asc')
+            ->orderBy('cup_positions.position', 'asc')
             ->get()
             ->groupBy('group');
 
@@ -239,20 +244,30 @@ class SeasonCupController extends Controller
     // Lưu season và phân chia teams
     public function store(Request $request)
     {
-        if ($request->teams_count % 32 !== 0) {
-            return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 32.']);
+        try {
+            if ($request->teams_count % 32 !== 0) {
+                \App\Services\ErrorLogService::logValidationError('The number of teams must be divisible by 32.', ['teams_count' => $request->teams_count]);
+                return redirect()->back()->withErrors(['teams_count' => 'The number of teams must be divisible by 32.']);
+            }
+
+            DB::beginTransaction();
+
+            $meta = $request->meta ?: SeasonMeta::random();
+            $seasonId = DB::table('cup_seasons')->insertGetId([
+                'season' => $request->season,
+                'teams_count' => $request->teams_count,
+                'meta' => $meta,
+            ]);
+
+            $this->assignTeamsToGroups($seasonId, $request->teams_count);
+
+            DB::commit();
+            return redirect()->route('cup.seasons.index')->with('success', 'Season created successfully.');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            \App\Services\ErrorLogService::logException($th);
+            return redirect()->back()->with('fail', 'Failed to create season.');
         }
-
-        $meta = $request->meta ?: SeasonMeta::random();
-        $seasonId = DB::table('cup_seasons')->insertGetId([
-            'season' => $request->season,
-            'teams_count' => $request->teams_count,
-            'meta' => $meta,
-        ]);
-
-        $this->assignTeamsToGroups($seasonId, $request->teams_count);
-
-        return redirect()->route('cup.seasons.index')->with('success', 'Season created successfully.');
     }
 
     private function assignTeamsToGroups($seasonId, $teamsCount)
@@ -320,7 +335,6 @@ class SeasonCupController extends Controller
                     'goal_conceded' => 0,
                     'goal_difference' => 0,
                     'points' => 0,
-                    'position' => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -391,10 +405,11 @@ class SeasonCupController extends Controller
 
         $topTeams = DB::table('cup_standings')
             ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
-            ->whereIn('cup_standings.position', [1, 2, 3, 4]) // Chỉ lấy từ vị trí 1 đến 4
+            ->join('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
+            ->whereIn('cup_positions.position', [1, 2, 3, 4]) // Chỉ lấy từ vị trí 1 đến 4
             ->where('cup_standings.season_id', $seasonId)
             ->orderBy('cup_standings.group', 'asc')
-            ->orderBy('cup_standings.position', 'asc')
+            ->orderBy('cup_positions.position', 'asc')
             ->get()
             ->groupBy('group'); // Nhóm theo `group`
 

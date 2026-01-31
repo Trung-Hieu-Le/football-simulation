@@ -14,6 +14,50 @@ class ErrorLogService
     private const LOG_DIR = 'logs/errors';
 
     /**
+     * Log a debug message to a separate debug log file
+     *
+     * @param string $message Debug message
+     * @param array $context Additional context data
+     * @param string|null $category Optional category for organizing logs
+     * @return void
+     */
+    public static function logDebug(string $message, array $context = [], ?string $category = null): void
+    {
+        try {
+            $logDir = storage_path(self::LOG_DIR);
+            
+            // Create directory if it doesn't exist
+            if (!File::exists($logDir)) {
+                File::makeDirectory($logDir, 0755, true);
+            }
+
+            // Determine log file name
+            $fileName = $category ? "debug-{$category}.log" : 'debug.log';
+            $logFile = $logDir . '/' . $fileName;
+
+            // Format log entry
+            $timestamp = now()->format('Y-m-d H:i:s');
+            $contextString = !empty($context) ? json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : '';
+            
+            $logEntry = "[{$timestamp}] {$message}";
+            if ($contextString) {
+                $logEntry .= "\nContext: {$contextString}";
+            }
+            $logEntry .= "\n" . str_repeat('-', 80) . "\n";
+
+            // Write to file
+            File::append($logFile, $logEntry);
+        } catch (Exception $e) {
+            // Fallback to Laravel's default logging if custom logging fails
+            Log::error('Failed to write to custom debug log', [
+                'original_message' => $message,
+                'original_context' => $context,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Log an error to a separate error log file
      *
      * @param string $message Error message

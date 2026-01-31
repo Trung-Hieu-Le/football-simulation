@@ -24,9 +24,9 @@
                     <a href="{{ route('teams.index', ['sort' => 'attack', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
-                    Phòng ngự
-                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'desc']) }}">⬇️</a>
+                    Sáng tạo
+                    <a href="{{ route('teams.index', ['sort' => 'creative', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'creative', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
                     Kiểm soát
@@ -34,19 +34,19 @@
                     <a href="{{ route('teams.index', ['sort' => 'control', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
+                    Tốc độ
+                    <a href="{{ route('teams.index', ['sort' => 'pace', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'pace', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
+                    Phòng ngự
+                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'asc']) }}">⬆️</a>
+                    <a href="{{ route('teams.index', ['sort' => 'defense', 'direction' => 'desc']) }}">⬇️</a>
+                </th>
+                <th>
                     Thể lực
                     <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'asc']) }}">⬆️</a>
                     <a href="{{ route('teams.index', ['sort' => 'stamina', 'direction' => 'desc']) }}">⬇️</a>
-                </th>
-                <th>
-                    Chuyền bóng
-                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'pass', 'direction' => 'desc']) }}">⬇️</a>
-                </th>
-                <th>
-                    Tốc độ
-                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'asc']) }}">⬆️</a>
-                    <a href="{{ route('teams.index', ['sort' => 'speed', 'direction' => 'desc']) }}">⬇️</a>
                 </th>
                 <th>
                     Tinh thần
@@ -85,15 +85,15 @@
                         </div>
                     </td>
                     <td>{{ $team->attack }}</td>
-                    <td>{{ $team->defense }}</td>
+                    <td>{{ $team->creative }}</td>
                     <td>{{ $team->control }}</td>
+                    <td>{{ $team->pace }}</td>
+                    <td>{{ $team->defense }}</td>
                     <td>{{ $team->stamina }}</td>
-                    <td>{{ $team->pass }}</td>
-                    <td>{{ $team->speed }}</td>
                     <td>{{ $team->mental }}</td>
                     <td>{{ $team->discipline }}</td>
                     <td>{{ $team->form }}</td>
-                    <td>{{ $team->attack+$team->defense+$team->control+$team->stamina+$team->pass+$team->speed+$team->mental+$team->discipline }}</td>
+                    <td>{{ $team->attack + $team->creative + $team->control + $team->pace + $team->defense + $team->mental + $team->discipline + $team->stamina }}</td>
 
                     {{-- <td>
                         <div style="display: flex;">
@@ -177,20 +177,24 @@
                                     <input type="number" class="form-control" name="attack" value="{{ $team->attack }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="defense" class="form-label">Phòng ngự</label>
-                                    <input type="number" class="form-control" name="defense" value="{{ $team->defense }}" required>
+                                    <label for="creative" class="form-label">Sáng tạo</label>
+                                    <input type="number" class="form-control" name="creative" value="{{ $team->creative }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
                                     <label for="control" class="form-label">Kiểm soát</label>
                                     <input type="number" class="form-control" name="control" value="{{ $team->control }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="stamina" class="form-label">Sức bền</label>
-                                    <input type="number" class="form-control" name="stamina" value="{{ $team->stamina }}" required>
+                                    <label for="pace" class="form-label">Tốc độ</label>
+                                    <input type="number" class="form-control" name="pace" value="{{ $team->pace }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="speed" class="form-label">Tốc độ</label>
-                                    <input type="number" class="form-control" name="speed" value="{{ $team->speed }}" required>
+                                    <label for="defense" class="form-label">Phòng ngự</label>
+                                    <input type="number" class="form-control" name="defense" value="{{ $team->defense }}" required>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label for="stamina" class="form-label">Sức bền</label>
+                                    <input type="number" class="form-control" name="stamina" value="{{ $team->stamina }}" required>
                                 </div>
                                 <div class="col-6 mb-3">
                                     <label for="mental" class="form-label">Tinh thần</label>

@@ -27,24 +27,27 @@ class EliminateMatchCupController extends Controller
     
     public function simulateMatch(Request $request)
     {
-        $season_id = $request->input('season_id');
-        $match_count = $request->input('match_count', 1);
-        $season_meta = DB::table('cup_seasons')->where('id', $season_id)->value('meta');
-        
-        $nextMatches = DB::table('cup_eliminate_stage_matches')
-            ->where('season_id', $season_id)
-            ->whereNull('team1_score')
-            ->whereNull('team2_score')
-            ->limit($match_count)
-            ->get();
-        
-        if($nextMatches->isEmpty()) {
-            return redirect()->back()->with('fail', 'No match to simulate!');
-        }
-        
-        $matchResult = [];
-        
-        foreach ($nextMatches as $match) {
+        try {
+            $season_id = $request->input('season_id');
+            $match_count = $request->input('match_count', 1);
+            $season_meta = DB::table('cup_seasons')->where('id', $season_id)->value('meta');
+            
+            $nextMatches = DB::table('cup_eliminate_stage_matches')
+                ->where('season_id', $season_id)
+                ->whereNull('team1_score')
+                ->whereNull('team2_score')
+                ->limit($match_count)
+                ->get();
+            
+            if($nextMatches->isEmpty()) {
+                return redirect()->back()->with('fail', 'No match to simulate!');
+            }
+            
+            DB::beginTransaction();
+            
+            $matchResult = [];
+            
+            foreach ($nextMatches as $match) {
             $team1 = DB::table('teams')->where('id', $match->team1_id)->first();
             $team2 = DB::table('teams')->where('id', $match->team2_id)->first();
             
@@ -81,6 +84,7 @@ class EliminateMatchCupController extends Controller
                     $penaltyResult = $this->simulationService->simulatePenaltyShootout($team1, $team2);
                 }
             }
+            // dd($team1, $team2, $season_meta, $matchData, $penaltyResult);
             
             // Xác định đội thắng
             $winner_id = $matchData['team1_score'] > $matchData['team2_score'] 
@@ -144,8 +148,14 @@ class EliminateMatchCupController extends Controller
             ];
         }
         
+        DB::commit();
         return redirect()->back()
             ->with('success', 'Next matches simulated successfully!')
             ->with('matchResult', $matchResult);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            \App\Services\ErrorLogService::logException($th);
+            return redirect()->back()->with('fail', 'Failed to simulate matches.');
+        }
     }
 }
