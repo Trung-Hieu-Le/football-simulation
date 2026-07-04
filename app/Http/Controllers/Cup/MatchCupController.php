@@ -122,9 +122,9 @@ class MatchCupController extends Controller
             return redirect()->back()
                 ->with('success', 'Next matches simulated successfully!')
                 ->with('matchResult', $matchResult);
-        } catch (\Throwable $th) {
+        } catch (\Exception $ex) {
             DB::rollBack();
-            \App\Services\ErrorLogService::logException($th);
+            \App\Services\ErrorLogService::logException($ex);
             return redirect()->back()->with('fail', 'Failed to simulate matches.');
         }
     }

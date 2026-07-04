@@ -93,6 +93,7 @@ class SeasonCupController extends Controller
     {
         DB::table('cup_standings')->delete();
         DB::table('cup_positions')->delete();
+        DB::table('cup_eliminate_stage_matches')->delete();
         DB::table('cup_group_stage_matches')->delete();
         DB::table('cup_group_teams')->delete();
         DB::table('cup_seasons')->delete();
@@ -124,7 +125,7 @@ class SeasonCupController extends Controller
                      'cup_positions.position', 'cup_positions.result')
             ->join('teams', 'teams.id', 'cup_standings.team_id')
             ->leftJoin('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
-            ->where('season_id', $id)
+            ->where('cup_standings.season_id', $id)
             ->orderBy('group', 'asc')
             ->orderBy('cup_positions.position', 'asc')
             ->get()
@@ -399,9 +400,13 @@ class SeasonCupController extends Controller
         $existingMatchesCount = DB::table('cup_eliminate_stage_matches')
             ->where('season_id', $seasonId)
             ->count();
+        
         if ($existingMatchesCount >= 32) {
-            return redirect()->route('cup.seasons.index')->with('fail', 'Season already have eliminate.');
+            return redirect()->route('cup.eliminate.view', $seasonId);
         }
+        
+        // Nếu chưa có đủ 32 match thì tạo mới
+        if ($existingMatchesCount < 32) {
 
         $topTeams = DB::table('cup_standings')
             ->join('teams', 'cup_standings.team_id', '=', 'teams.id')
@@ -413,13 +418,13 @@ class SeasonCupController extends Controller
             ->get()
             ->groupBy('group'); // Nhóm theo `group`
 
-        // Kiểm tra nếu không đủ dữ liệu trong các bảng
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $group) {
-            if (!isset($topTeams[$group]) || $topTeams[$group]->count() < 4) {
-                return redirect()->route('cup.seasons.index')
-                    ->with('fail', "Group $group does not have enough teams in positions 1 to 4.");
+            // Kiểm tra nếu không đủ dữ liệu trong các bảng
+            foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $group) {
+                if (!isset($topTeams[$group]) || $topTeams[$group]->count() < 4) {
+                    return redirect()->route('cup.eliminate.view', $seasonId)
+                        ->with('fail', "Group $group does not have enough teams in positions 1 to 4.");
+                }
             }
-        }
         // dd($topTeams);
 
         $branches = [
@@ -475,8 +480,10 @@ class SeasonCupController extends Controller
                 ];
             }
         }
-        // dd($matches);
-        DB::table('cup_eliminate_stage_matches')->insert($matches);
-        return redirect()->route('cup.seasons.index')->with('success', 'Season deleted successfully.');
+            DB::table('cup_eliminate_stage_matches')->insert($matches);
+        }
+        
+        // Sau khi tạo (hoặc đã có sẵn), redirect tới trang eliminate view
+        return redirect()->route('cup.eliminate.view', $seasonId);
     }
 }

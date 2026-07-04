@@ -1,30 +1,158 @@
 <?php
 
 namespace App\Services;
-use App\Services\FieldSimulationConstants;
 
 class MatchSimulationService
-{    
+{
+    // Constants
+    const SITUATIONS_PER_MINUTE = 3;
+    /** Tình huống halftime, tình huống thứ 135 */
+    const HALFTIME_SITUATION = self::TOTAL_SITUATIONS_FULLTIME / 2; // 135
+    /** Tổng số tình huống fulltime, tình huống thứ 270 */
+    const TOTAL_SITUATIONS_FULLTIME = self::SITUATIONS_PER_MINUTE * 90; // 270
+    /** Tổng số tình huống extra time, tình huống thứ 90 */
+    const TOTAL_SITUATIONS_EXTRATIME = self::SITUATIONS_PER_MINUTE * 30; // 90
+    /** Tình huống halftime extra time, tình huống thứ 120 */
+    const EXTRATIME_HALFTIME_SITUATION = self::TOTAL_SITUATIONS_FULLTIME + self::TOTAL_SITUATIONS_EXTRATIME / 2; // 315
+    /** Tình huống kết thúc extra time, tình huống thứ 180 */
+    const EXTRATIME_END_SITUATION = self::TOTAL_SITUATIONS_FULLTIME + self::TOTAL_SITUATIONS_EXTRATIME; // 360
+    /** Tình huống bắt đầu hiệp chính 1, tình huống thứ 1 */
+    const START_SITUATION = 1;
+    /** Tình huống bắt đầu hiệp chính 2, tình huống thứ 136 */
+    const HALFTIME_START_SITUATION = self::HALFTIME_SITUATION + 1; // 136
+    /** Tình huống bắt đầu hiệp phụ 1, tình huống thứ 271 */
+    const EXTRATIME_START_SITUATION = self::TOTAL_SITUATIONS_FULLTIME + 1; // 271
+    /** Tình huống bắt đầu hiệp phụ 2, tình huống thứ 316 */
+    const EXTRATIME_HALFTIME_START_SITUATION = self::EXTRATIME_HALFTIME_SITUATION + 1; // 316
+
+    // Field Position Mapping
+    const FIELD_POSITION_GOAL_TEAM1 = 0;
+    const FIELD_POSITION_PENALTY_AREA_TEAM1 = 1;
+    const FIELD_POSITION_FINAL_THIRD_TEAM1 = 2;
+    const FIELD_POSITION_MIDFIELD_LOW = 3;
+    const FIELD_POSITION_MIDFIELD_HIGH = 4;
+    const FIELD_POSITION_MIDFIELD = 5;
+    const FIELD_POSITION_MIDFIELD_LOW_TEAM2 = 6;
+    const FIELD_POSITION_MIDFIELD_HIGH_TEAM2 = 7;
+    const FIELD_POSITION_FINAL_THIRD_TEAM2 = 8;
+    const FIELD_POSITION_PENALTY_AREA_TEAM2 = 9;
+    const FIELD_POSITION_GOAL_TEAM2 = 10;
+    
+    // Shooting positions (có thể quyết định sút)
+    const SHOOTING_POSITIONS = [0, 1, 2, 8, 9, 10];
+    
+    const META_BONUS = 1.08; // +8%
+    const META_PENALTY = 0.92; // -8%
+    
+    const STAMINA_FACTOR_BASE = 0.5; // 50% tỉ lệ stamina ảnh hưởng đến stats
+    const STAMINA_DIVISOR = 200;
+    
+    // Spec base constants
+    const BASE_SHOT_CHANCE = 8;
+    const BASE_FOUL_CHANCE = 7;
+    const BASE_PENALTY_GOAL = 78;
+    const BASE_SPECIAL_EVENT = 6;
+
+    // Zone shot bonus (index 1..9)
+    const ZONE_SHOT_BONUS = [
+        1 => 30,
+        2 => 18,
+        3 => 8,
+        4 => -5,
+        5 => -20,
+        6 => -5,
+        7 => 8,
+        8 => 18,
+        9 => 30,
+    ];
+
+    // Zone progress difficulty (index 1..9)
+    const ZONE_PROGRESS_DIFFICULTY = [
+        1 => 2.5,
+        2 => 2.0,
+        3 => 1.5,
+        4 => 1.2,
+        5 => 1.0,
+        6 => 1.2,
+        7 => 1.5,
+        8 => 2.0,
+        9 => 2.5,
+    ];
+
+    // Stamina phase decay constants
+    const HALF_1_DECAY = 0.05;
+    const HALF_2_DECAY = 0.12;
+    const EXTRA_1_DECAY = 0.20;
+    const EXTRA_2_DECAY = 0.30;
+
+    const FOUL_DISCIPLINE_DIVISOR = 50;
+    const FOUL_CHANCE_MIN = 3;
+    const FOUL_CHANCE_MAX = 12;
+    const PENALTY_CHANCE = 40; // 40% chance penalty khi foul ở vị trí 1 hoặc 9
+    
+    const COUNTER_ATTACK_CHANCE = 15; // 15% chance counter (giảm để khó phản công hơn)
+    const COUNTER_MOVE_DISTANCE = 2;
+    const SPEED_THRESHOLD = 70;
+    const SPEED_BONUS_CHANCE = 15; // 15% chance move +2
+    const MOVE_DISTANCE_NORMAL = 1;
+    const MOVE_DISTANCE_FAST = 2;
+    
+    const DIFFICULTY_FACTOR_MULTIPLIER = 0.3; // Tăng từ 0.1 lên 0.3 để khó tấn công hơn
+
+    const PACE_PRESSING_MULTIPLIER = 0.5; // Pace ảnh hưởng đến pressing (cướp bóng)
+    
+    // Shot chances and scoring impact
+    const CREATIVE_BONUS_CHANCE = 15; // 15% chance move +2
+    const COUNTER_AFTER_SHOT_CHANCE = 30; // 30% chance counter after shot miss (giảm từ 40%)
+    const PENALTY_GOAL_CHANCE = 70; // Penalty: 70% goal chance (fallback)
+    const PENALTY_ON_TARGET_CHANCE = 80; // Penalty: 80% on target (fallback)
+    const NORMAL_SHOT_GOAL_CHANCE = 30; // Shot bình thường: 30% goal chance (fallback)
+    const NORMAL_SHOT_ON_TARGET_CHANCE = 40; // Shot bình thường: 40% on target (fallback)
+    const SHOT_ATTACK_BONUS_MULTIPLIER = 0.3; // Attack * 0.3 for on-target chance
+    const SHOT_ON_TARGET_MIN = 15;
+    const SHOT_ON_TARGET_MAX = 90;
+    const FREE_KICK_GOAL_CHANCE = 5; // Free kick: 5% goal chance (fallback)
+    const FREE_KICK_SHOT_CHANCE = 25; // Free kick: 25% sẽ shot (giảm từ 30%)
+    const FREEKICK_ON_TARGET_MIN = 5;
+    const FREEKICK_ON_TARGET_MAX = 45;
+    const COUNTER_DISTANCE_MIN = 1;
+    const COUNTER_DISTANCE_MAX = 5;
+    const FREEKICK_PASS_DISTANCE_MIN = 1;
+    const FREEKICK_PASS_DISTANCE_MAX = 3;
+    const COUNTER_DISTANCE_DIVISOR = 20; // Counter distance = counterPower / 20
+    
+    const PENALTY_ON_TARGET_MIN = 70;
+    const PENALTY_ON_TARGET_MAX = 95;
+    const PENALTY_ATTACK_BONUS_MULTIPLIER = 0.1;
+    const PENALTY_MENTAL_BONUS_MULTIPLIER = 0.15;
+    
+    // Shooting decision (quyết định sút hay move ball)
+    const SHOOT_DECISION_BASE_CHANCE = 8; // Base 8% theo spec
+    const SHOOT_DECISION_ATTACK_MULTIPLIER = 0.18; // Attack * 0.18 theo spec
+    const SHOOT_DECISION_MENTAL_MULTIPLIER = 0.10; // Mental * 0.10 theo spec
+    const SHOOT_DECISION_MAX = 55;
+    const SPECIAL_EVENT_LUCK_MULTIPLIER = 0.12; // Luck ảnh hưởng đến special event
+    
+    const FREE_KICK_ON_TARGET_CHANCE = 25; // Base free kick on target chance
+    
+    // Counter attack
+    const COUNTER_STEAL_CHANCE = 50; // 50% cướp bóng khi shoot trượt (giảm từ 60%)
+    
     /**
      * Xác định đội nào giao bóng dựa trên tình huống
      */
     public function getKickoffTeam($situation, $isExtraTime = false)
     {
-        $startSituation = FieldSimulationConstants::START_SITUATION;
-        $halftimeStartSituation = FieldSimulationConstants::HALFTIME_START_SITUATION;
-        $extraTimeStartSituation = FieldSimulationConstants::EXTRATIME_START_SITUATION;
-        $extraTimeHalftimeStartSituation = FieldSimulationConstants::EXTRATIME_HALFTIME_START_SITUATION;
-
         if ($isExtraTime) {
-            if ($situation == $extraTimeStartSituation) {
+            if ($situation == self::EXTRATIME_START_SITUATION) {
                 return 1; // Hiệp phụ 1: Team1 giao bóng
-            } else if ($situation == $extraTimeHalftimeStartSituation) {
+            } else if ($situation == self::EXTRATIME_HALFTIME_START_SITUATION) {
                 return 2; // Hiệp phụ 2: Team2 giao bóng
             }
         } else {
-            if ($situation == $startSituation) {
+            if ($situation == self::START_SITUATION) {
                 return 1; // Hiệp 1: Team1 giao bóng
-            } else if ($situation == $halftimeStartSituation) {
+            } else if ($situation == self::HALFTIME_START_SITUATION) {
                 return 2; // Hiệp 2: Team2 giao bóng
             }
         }
@@ -32,43 +160,137 @@ class MatchSimulationService
     }
 
     /**
-     * Tính toán chỉ số đội với form và meta factors
+     * Tính toán chỉ số đội với 10 chỉ số mới và hệ số mệt mỏi/meta
      */
     public function calculateTeamStats($team, $seasonMeta, $isSecondHalf = false)
     {
-        $staminaFactor = $isSecondHalf ? (FieldSimulationConstants::STAMINA_FACTOR_BASE + ($team->stamina / FieldSimulationConstants::STAMINA_DIVISOR)) : 1;
-        $formFactor = 1 + ($team->form / FieldSimulationConstants::FORM_DIVISOR);
-        
+        // Compute a simple stamina/decay factor used to scale effective stats in each phase
+        $phaseDecay = $isSecondHalf ? self::HALF_2_DECAY : self::HALF_1_DECAY;
+
+        $fatigueResist = pow((($team->stamina ?? 50) / 100), 0.65);
+        $staminaFactor = 1 - ($phaseDecay * (1 - $fatigueResist));
+
+        // Use raw 10 stats (no `form` multiplier). Defaults applied if missing.
         $stats = [
-            'attack' => $team->attack * $formFactor,
-            'defense' => $team->defense * $formFactor,
-            'creative' => $team->creative * $formFactor,
-            'control' => $team->control * $formFactor,
-            'pace' => $team->pace * $formFactor,
+            'attack' => ($team->attack ?? 50),
+            'defense' => ($team->defense ?? 50),
+            'control' => ($team->control ?? 50),
+            'stamina' => ($team->stamina ?? 50),
+            'goalkeeping' => ($team->goalkeeping ?? ($team->goalkeeper ?? 50)),
+            'creative' => ($team->creative ?? 50),
+            'pace' => ($team->pace ?? 50),
+            'mental' => ($team->mental ?? 50),
+            'discipline' => ($team->discipline ?? 50),
+            'luck' => ($team->luck ?? 50),
+            // helper
             'stamina_factor' => $staminaFactor,
-            'mental' => $team->mental,
-            'discipline' => $team->discipline,
         ];
-        
-        $stats = $this->applyStaminaFactors($stats, $isSecondHalf);
-        
+
+        // Apply stamina/fatigue effect to effective stats
+        foreach (['attack','defense','control','pace','creative','goalkeeping'] as $k) {
+            if (isset($stats[$k])) {
+                $stats[$k] = $stats[$k] * $staminaFactor;
+            }
+        }
+
+        $stats = $this->applyMetaFactors($stats, $seasonMeta, $isSecondHalf);
+
         return $stats;
     }
     
     /**
-     * Áp dụng hệ số stamina cho hiệp 2
+     * Áp dụng hệ số meta
      */
-    private function applyStaminaFactors($stats, $isSecondHalf)
+    private function applyMetaFactors($stats, $seasonMeta, $isSecondHalf)
     {
-        if ($isSecondHalf) {
-            $stats['attack'] *= $stats['stamina_factor'];
-            $stats['defense'] *= $stats['stamina_factor'];
-            $stats['creative'] *= $stats['stamina_factor'];
-            $stats['control'] *= $stats['stamina_factor'];
-            $stats['pace'] *= $stats['stamina_factor'];
+        $metaBonus = self::META_BONUS;
+        $metaPenalty = self::META_PENALTY;
+
+        switch ($seasonMeta) {
+            case 'possession':
+                $stats['control'] *= $metaBonus;
+                $stats['attack'] *= $metaPenalty;
+                $stats['defense'] *= $metaPenalty;
+                break;
+            case 'counter':
+                $stats['pace'] *= $metaBonus;
+                $stats['control'] *= $metaPenalty;
+                break;
+            case 'pressing':
+                $stats['defense'] *= $metaBonus;
+                $stats['stamina_factor'] *= $metaPenalty;
+                break;
+            case 'tiki-taka':
+                $stats['control'] *= $metaBonus;
+                $stats['pace'] *= $metaPenalty;
+                break;
+            case 'long_ball':
+                $stats['attack'] *= $metaBonus;
+                $stats['control'] *= $metaPenalty;
+                break;
+            case 'build_up':
+                $stats['control'] *= $metaBonus;
+                $stats['pace'] *= $metaPenalty;
+                break;
+            case 'low_block':
+                $stats['defense'] *= $metaBonus;
+                $stats['attack'] *= $metaPenalty;
+                break;
+            case 'high_risk':
+                $stats['attack'] *= $metaBonus;
+                $stats['defense'] *= $metaPenalty;
+                break;
+            case 'high_line':
+                $stats['defense'] *= $metaBonus;
+                $stats['stamina_factor'] *= $metaPenalty;
+                break;
         }
-        
+
         return $stats;
+    }
+
+    /**
+     * Calculate possession power per spec
+     */
+    private function possessionPower($stats)
+    {
+        return ($stats['control'] * 2.0) + ($stats['stamina'] * 0.8) + ($stats['mental'] * 0.3);
+    }
+
+    /**
+     * Calculate steal power per spec
+     */
+    private function stealPower($stats)
+    {
+        return ($stats['defense'] * 1.2) + ($stats['pace'] * 0.8) + ($stats['discipline'] * 0.7);
+    }
+
+    /**
+     * Should shoot decision (shotChance) per spec
+     */
+    private function shotDecisionChance($zone, $attack, $mental)
+    {
+        $zoneBonus = self::ZONE_SHOT_BONUS[$zone] ?? (($zone === self::FIELD_POSITION_GOAL_TEAM1 || $zone === self::FIELD_POSITION_GOAL_TEAM2) ? 30 : 0);
+        return min(self::SHOOT_DECISION_MAX, self::SHOOT_DECISION_BASE_CHANCE + $zoneBonus + ($attack * self::SHOOT_DECISION_ATTACK_MULTIPLIER) + ($mental * self::SHOOT_DECISION_MENTAL_MULTIPLIER));
+    }
+
+    /**
+     * Shot power and save power / goal chance per spec
+     */
+    private function shotGoalChance($attack, $mental, $goalkeeping, $keeperMental)
+    {
+        $shotPower = ($attack * 2.0) + ($mental * 0.8);
+        $savePower = ($goalkeeping * 2.0) + ($keeperMental * 0.4);
+        if (($shotPower + $savePower) == 0) return 0.0;
+        return $shotPower / ($shotPower + $savePower);
+    }
+
+    /**
+     * Calculate chance for special lucky events based on luck stat
+     */
+    private function specialEventChance($luck)
+    {
+        return self::BASE_SPECIAL_EVENT + (($luck ?? 50) * self::SPECIAL_EVENT_LUCK_MULTIPLIER);
     }
     
     /**
@@ -76,23 +298,18 @@ class MatchSimulationService
      */
     public function simulateFullTime($team1, $team2, $seasonMeta, &$matchData)
     {
-        $startSituation = FieldSimulationConstants::START_SITUATION;
-        $halftimeStartSituation = FieldSimulationConstants::HALFTIME_START_SITUATION;
-        $totalSituationsFulltime = FieldSimulationConstants::TOTAL_SITUATIONS_FULLTIME;
-        $situationsPerMinute = FieldSimulationConstants::SITUATIONS_PER_MINUTE;
-
-        $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
+        $fieldPosition = self::FIELD_POSITION_MIDFIELD;
         $currentTeam = 1;
         
-        for ($situation = $startSituation; $situation <= $totalSituationsFulltime; $situation++) {
-            $time = (int)ceil($situation / $situationsPerMinute);
+        for ($situation = self::START_SITUATION; $situation <= self::TOTAL_SITUATIONS_FULLTIME; $situation++) {
+            $time = (int)ceil($situation / self::SITUATIONS_PER_MINUTE);
             
-            if ($situation == $startSituation || $situation == $halftimeStartSituation) {
+            if ($situation == self::START_SITUATION || $situation == self::HALFTIME_START_SITUATION) {
                 $currentTeam = $this->getKickoffTeam($situation, false);
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
+                $fieldPosition = self::FIELD_POSITION_MIDFIELD;
             }
             
-            $isSecondHalf = $situation > $halftimeStartSituation;
+            $isSecondHalf = $situation > self::HALFTIME_SITUATION;
             
             static $cachedStats = [];
             $halfKey = $isSecondHalf ? 'half2' : 'half1';
@@ -111,7 +328,7 @@ class MatchSimulationService
                 $matchData['team2_possession']++;
             }
             
-            $goalResult = $this->processSituation(
+            $result = $this->processSituation(
                 $fieldPosition,
                 $currentTeam,
                 $team1Stats,
@@ -119,13 +336,15 @@ class MatchSimulationService
                 $team1,
                 $team2,
                 $time,
-                $matchData,
-                $seasonMeta
+                $matchData
             );
             
-            if ($goalResult['goal']) {
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $goalResult['goalScoredBy'] == 1 ? 2 : 1; // Đội bị ghi bàn giao bóng
+            $fieldPosition = $result['fieldPosition'];
+            $currentTeam = $result['currentTeam'];
+            
+            if ($result['goal']) {
+                $fieldPosition = self::FIELD_POSITION_MIDFIELD;
+                $currentTeam = $result['goalScoredBy'] == 1 ? 2 : 1; // Đội bị ghi bàn giao bóng
             }
         }
     }
@@ -135,23 +354,18 @@ class MatchSimulationService
      */
     public function simulateExtraTime($team1, $team2, $seasonMeta, &$matchData)
     {
-        $extraTimeStartSituation = FieldSimulationConstants::EXTRATIME_START_SITUATION;
-        $extraTimeEndSituation = FieldSimulationConstants::EXTRATIME_END_SITUATION;
-        $situationsPerMinute = FieldSimulationConstants::SITUATIONS_PER_MINUTE;
-        $extraTimeHalftimeStartSituation = FieldSimulationConstants::EXTRATIME_HALFTIME_START_SITUATION;
-
-        $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
+        $fieldPosition = self::FIELD_POSITION_MIDFIELD;
         $currentTeam = 1;
         
-        for ($situation = $extraTimeStartSituation; $situation <= $extraTimeEndSituation; $situation++) {
-            $time = 90 + (int)ceil(($situation - $extraTimeStartSituation + 1) / $situationsPerMinute);
+        for ($situation = self::EXTRATIME_START_SITUATION; $situation <= self::EXTRATIME_END_SITUATION; $situation++) {
+            $time = 90 + (int)ceil(($situation - self::EXTRATIME_START_SITUATION + 1) / self::SITUATIONS_PER_MINUTE);
             
-            if ($situation == $extraTimeStartSituation || $situation == $extraTimeHalftimeStartSituation) {
+            if ($situation == self::EXTRATIME_START_SITUATION || $situation == self::EXTRATIME_HALFTIME_SITUATION + 1) {
                 $currentTeam = $this->getKickoffTeam($situation, true);
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
+                $fieldPosition = self::FIELD_POSITION_MIDFIELD;
             }
             
-            $isSecondHalf = $situation > $extraTimeHalftimeStartSituation;
+            $isSecondHalf = $situation > self::EXTRATIME_HALFTIME_SITUATION;
             
             static $cachedStats = [];
             $halfKey = $isSecondHalf ? 'et_half2' : 'et_half1';
@@ -170,7 +384,7 @@ class MatchSimulationService
                 $matchData['team2_possession']++;
             }
             
-            $goalResult = $this->processSituation(
+            $result = $this->processSituation(
                 $fieldPosition,
                 $currentTeam,
                 $team1Stats,
@@ -178,117 +392,80 @@ class MatchSimulationService
                 $team1,
                 $team2,
                 $time,
-                $matchData,
-                $seasonMeta
+                $matchData
             );
             
-            if ($goalResult['goal']) {
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $goalResult['goalScoredBy'] == 1 ? 2 : 1; // Đội bị ghi bàn giao bóng
+            $fieldPosition = $result['fieldPosition'];
+            $currentTeam = $result['currentTeam'];
+            
+            if ($result['goal']) {
+                $fieldPosition = self::FIELD_POSITION_MIDFIELD;
+                $currentTeam = $result['goalScoredBy'] == 1 ? 2 : 1; // Đội bị ghi bàn giao bóng
             }
         }
     }
     
     /**
      * Xử lý một tình huống
-     * Sử dụng con trỏ cho fieldPosition, currentTeam và seasonMeta
      */
-    /**
-     * Kiểm tra xem bóng có đang ở phía sân đối phương (có thể tấn công)
-     * @param int $fieldPosition Vị trí bóng (0-10)
-     * @param int $currentTeam Team đang cầm bóng (1 hoặc 2)
-     * @return bool true nếu bóng ở phía sân đối phương
-     */
-    private function isBallOnOpponentSide($fieldPosition, $currentTeam)
-    {
-        if ($currentTeam == 1) {
-            // Team 1 tấn công → bóng phải ở phía sân Team 2 (position >= 5)
-            return $fieldPosition >= FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-        } else {
-            // Team 2 tấn công → bóng phải ở phía sân Team 1 (position <= 5)
-            return $fieldPosition <= FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-        }
-    }
-    
-    /**
-     * Tính khoảng cách đến khung thành đối phương
-     * @param int $fieldPosition Vị trí bóng (0-10)
-     * @param int $currentTeam Team đang tấn công (1 hoặc 2)
-     * @return int Khoảng cách đến goal đối phương
-     */
-    private function getDistanceToGoal($fieldPosition, $currentTeam)
-    {
-        if ($currentTeam == 1) {
-            // Team1 tấn công về phía goal Team2 (vị trí 10)
-            return FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2 - $fieldPosition;
-        } else {
-            // Team2 tấn công về phía goal Team1 (vị trí 0)
-            return $fieldPosition - FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1;
-        }
-    }
-    
-    /**
-     * Xử lý tình huống bóng
-     * Logic: Foul → MoveBall → Shot (nếu ở vị trí phù hợp)
-     */
-    private function processSituation(&$fieldPosition, &$currentTeam, $team1Stats, $team2Stats, 
-                                     $team1, $team2, $time, &$matchData, &$seasonMeta)
+    private function processSituation($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
+                                     $team1, $team2, $time, &$matchData)
     {
         $result = [
+            'fieldPosition' => $fieldPosition,
+            'currentTeam' => $currentTeam,
             'goal' => false,
             'goalScoredBy' => null,
             'isPenalty' => false
         ];
         
-        // Xác định team tấn công và phòng thủ
-        $attackingTeam = $currentTeam == 1 ? $team1Stats : $team2Stats;
-        $defendingTeam = $currentTeam == 1 ? $team2Stats : $team1Stats;
+        // Kiểm tra foul
+        $foulChance = rand(1, 100);
+        $defendingDiscipline = $currentTeam == 1 ? $team2Stats['discipline'] : $team1Stats['discipline'];
         
-        // 1. Kiểm tra foul (discipline)
-        $defendingDiscipline = $defendingTeam['discipline'];
-        $foulThreshold = FieldSimulationConstants::BASE_FOUL_CHANCE - ($defendingDiscipline / FieldSimulationConstants::FOUL_DISCIPLINE_DIVISOR);
-        $foulThreshold = max(FieldSimulationConstants::FOUL_CHANCE_MIN, min(FieldSimulationConstants::FOUL_CHANCE_MAX, $foulThreshold));
+        $foulThreshold = self::BASE_FOUL_CHANCE - ($defendingDiscipline * 0.08);
+        $foulThreshold = max(self::FOUL_CHANCE_MIN, min(self::FOUL_CHANCE_MAX, $foulThreshold));
         
-        if (rand(1, 100) <= $foulThreshold) {
+        if ($foulChance <= $foulThreshold) {
             return $this->handleFoul($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
-                                    $team1, $team2, $time, $matchData, $seasonMeta);
+                                    $team1, $team2, $time, $matchData);
         }
         
-        // 2. MoveBall: possession, pressing, counter attack
-        $this->moveBall($fieldPosition, $currentTeam, $attackingTeam, $defendingTeam, $seasonMeta);
+        // Di chuyển bóng
+        $moveResult = $this->moveBall($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $team1, $team2);
+        $result['fieldPosition'] = $moveResult['newPosition'];
         
-        // 3. Kiểm tra quyết định sút (chỉ khi ở phía sân đối phương và gần goal)
-        $isOnOpponentSide = $this->isBallOnOpponentSide($fieldPosition, $currentTeam);
-        
-        if ($isOnOpponentSide) {
-            // Kiểm tra xem có ở vị trí shooting không
-            $canShoot = false;
-            if ($currentTeam == 1) {
-                // Team 1 tấn công → position 8, 9, 10 (gần goal Team 2)
-                $canShoot = $fieldPosition >= FieldSimulationConstants::FIELD_POSITION_FINAL_THIRD_TEAM2;
-            } else {
-                // Team 2 tấn công → position 0, 1, 2 (gần goal Team 1)
-                $canShoot = $fieldPosition <= FieldSimulationConstants::FIELD_POSITION_FINAL_THIRD_TEAM1;
-            }
+        // Kiểm tra quyết định sút ở các vị trí shooting (0, 1, 2, 8, 9, 10)
+        if (in_array($moveResult['newPosition'], self::SHOOTING_POSITIONS)) {
+            $shootingTeam = $this->getShootingTeam($moveResult['newPosition'], $currentTeam);
+            $attackingTeam = $currentTeam == 1 ? $team1Stats : $team2Stats;
             
-            if ($canShoot) {
-                $distanceToGoal = $this->getDistanceToGoal($fieldPosition, $currentTeam);
-                $shootDecisionChance = FieldSimulationConstants::SHOOT_DECISION_BASE_CHANCE + 
-                                       ($distanceToGoal * FieldSimulationConstants::SHOOT_DECISION_DISTANCE_BONUS) +
-                                       ($attackingTeam['attack'] * FieldSimulationConstants::SHOOT_DECISION_ATTACK_MULTIPLIER) + 
-                                       ($attackingTeam['mental'] * FieldSimulationConstants::SHOOT_DECISION_MENTAL_MULTIPLIER);
-                
-                // Meta: High risk - tăng shot chance
-                if ($seasonMeta === 'high_risk') {
-                    $shootDecisionChance += FieldSimulationConstants::META_HIGH_RISK_ATTACK_BONUS;
-                }
-                
-                $shootDecisionChance = min(FieldSimulationConstants::SHOOT_DECISION_MAX, $shootDecisionChance);
-                
-                if (rand(1, 100) <= $shootDecisionChance) {
-                    return $this->handleShot($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
-                                            $team1, $team2, $time, $matchData, $seasonMeta);
-                }
+            // Quyết định sút hay move ball theo công thức spec
+            $shootDecisionChance = $this->shotDecisionChance($moveResult['newPosition'], $attackingTeam['attack'], $attackingTeam['mental']);
+            
+            if (rand(1, 100) <= $shootDecisionChance) {
+                // Quyết định sút
+                return $this->handleShot($moveResult['newPosition'], $currentTeam, $team1Stats, $team2Stats, 
+                                        $team1, $team2, $time, $matchData);
+            }
+            // Không sút, tiếp tục move ball (đã được xử lý ở moveBall)
+        }
+        
+        // Kiểm tra counter-attack
+        if ($moveResult['counterAttack']) {
+            $result['currentTeam'] = 3 - $currentTeam;
+        } else {
+            // Kiểm tra cướp bóng - tăng cơ hội cướp bóng để khó tấn công hơn
+            $stealChance = rand(1, 100);
+            $attackingControl = $currentTeam == 1 ? $team1Stats['control'] : $team2Stats['control'];
+            $defendingControl = $currentTeam == 1 ? $team2Stats['control'] : $team1Stats['control'];
+            
+            // Điều chỉnh để tăng cơ hội cướp bóng (với stats 50-100)
+            $controlRatio = ($attackingControl / ($attackingControl + $defendingControl)) * 100;
+            $stealThreshold = $controlRatio - 15; // Giảm threshold để tăng cơ hội cướp bóng
+            
+            if ($stealChance > $stealThreshold) {
+                $result['currentTeam'] = 3 - $currentTeam;
             }
         }
         
@@ -296,182 +473,38 @@ class MatchSimulationService
     }
     
     /**
-     * MoveBall: possession, pressing, counter attack
-     * Team 1 tấn công → tăng position (0→10)
-     * Team 2 tấn công → giảm position (10→0)
+     * Xác định đội đang sút dựa trên vị trí và currentTeam
      */
-    private function moveBall(&$fieldPosition, &$currentTeam, $attackingTeam, $defendingTeam, &$seasonMeta)
+    private function getShootingTeam($fieldPosition, $currentTeam)
     {
-        // Tính possession chance (control vs control + pace)
-        $attackingPossessionPower = $attackingTeam['control'];
-        $defendingPossessionPower = $defendingTeam['control'] + ($defendingTeam['pace'] * FieldSimulationConstants::PACE_PRESSING_MULTIPLIER);
-        
-        // Meta effects
-        if ($seasonMeta === 'possession') {
-            $attackingPossessionPower += FieldSimulationConstants::META_POSSESSION_BONUS_CHANCE;
-        }
-        if ($seasonMeta === 'build_up') {
-            $attackingPossessionPower += FieldSimulationConstants::META_BUILD_UP_CONTROL_BONUS;
-        }
-        if ($seasonMeta === 'pressing') {
-            $defendingPossessionPower += FieldSimulationConstants::META_PRESSING_BONUS_CHANCE;
-        }
-        if ($seasonMeta === 'high_line') {
-            $defendingPossessionPower += FieldSimulationConstants::META_HIGH_LINE_PRESSING_BONUS;
-        }
-        
-        $totalPower = $attackingPossessionPower + $defendingPossessionPower;
-        $possessionChance = ($totalPower == 0) 
-            ? FieldSimulationConstants::POSSESSION_BASE_CHANCE 
-            : ($attackingPossessionPower / $totalPower) * 100;
-        
-        if (rand(1, 100) <= $possessionChance) {
-            // AttackTeam giữ được bóng → moveball lên (creative)
-            $creativePower = $attackingTeam['creative'];
-            $defenseResistance = $defendingTeam['defense'] + ($defendingTeam['control'] * FieldSimulationConstants::CONTROL_DEFENSE_MULTIPLIER);
-            
-            if ($seasonMeta === 'low_block') {
-                $defenseResistance += FieldSimulationConstants::META_LOW_BLOCK_DEFENSE_BONUS;
-            }
-            
-            $moveSuccessChance = ($creativePower / ($creativePower + $defenseResistance)) * 100;
-            
-            if ($seasonMeta === 'tiki-taka') {
-                $moveSuccessChance += FieldSimulationConstants::META_TIKI_TAKA_CREATIVE_BONUS;
-                $moveSuccessChance = min(100, $moveSuccessChance);
-            }
-            
-            if (rand(1, 100) <= $moveSuccessChance) {
-                // Moveball thành công
-                $moveDistance = FieldSimulationConstants::MOVE_DISTANCE_NORMAL;
-                
-                if ($seasonMeta === 'long_ball' && rand(1, 100) <= FieldSimulationConstants::META_LONG_BALL_CHANCE) {
-                    $moveDistance = FieldSimulationConstants::META_LONG_BALL_MOVE_DISTANCE;
-                } elseif ($creativePower > FieldSimulationConstants::CREATIVE_BONUS_THRESHOLD && 
-                          rand(1, 100) <= FieldSimulationConstants::CREATIVE_BONUS_CHANCE) {
-                    $moveDistance = FieldSimulationConstants::MOVE_DISTANCE_FAST;
-                }
-                
-                // Team 1 tấn công → tăng position (0→10)
-                // Team 2 tấn công → giảm position (10→0)
-                if ($currentTeam == 1) {
-                    $fieldPosition = min(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2, (int)$fieldPosition + $moveDistance);
-                } else {
-                    $fieldPosition = max(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1, (int)$fieldPosition - $moveDistance);
-                }
-            }
-        } else {
-            // DefendingTeam có thể pressing và cướp bóng
-            $this->handlePressingAndCounterAttack($fieldPosition, $currentTeam, $attackingTeam, $defendingTeam, $seasonMeta);
-        }
+        // currentTeam luôn là đội sở hữu bóng và đồng thời là đội có khả năng sút.
+        return $currentTeam;
     }
     
     /**
-     * Xử lý pressing và counter attack
-     * Khi defendingTeam không giữ được possession, có thể pressing để cướp bóng
-     * Logic: Khi ở sân nhà (xa goal đối phương) thì khó cướp bóng hơn
+     * Tính khoảng cách đến khung thành
      */
-    private function handlePressingAndCounterAttack(&$fieldPosition, &$currentTeam, $attackingTeam, $defendingTeam, &$seasonMeta)
+    private function getDistanceToGoal($fieldPosition, $currentTeam)
     {
-        // Kiểm tra xem bóng có ở sân nhà của attackingTeam không
-        $isOnHomeSide = false;
-        $distanceToOpponentGoal = 0;
-        
         if ($currentTeam == 1) {
-            // Team 1 tấn công → sân nhà là position 0-5, goal đối phương ở position 10
-            $isOnHomeSide = $fieldPosition <= FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            $distanceToOpponentGoal = FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2 - $fieldPosition;
+            // Team1 tấn công về phía goal Team2 (vị trí 10)
+            return 10 - $fieldPosition;
         } else {
-            // Team 2 tấn công → sân nhà là position 5-10, goal đối phương ở position 0
-            $isOnHomeSide = $fieldPosition >= FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            $distanceToOpponentGoal = $fieldPosition - FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1;
+            // Team2 tấn công về phía goal Team1 (vị trí 0)
+            return $fieldPosition;
         }
-        
-        // Tính pressing power (control + pace + discipline)
-        $pressingPower = $defendingTeam['control'] + 
-                        ($defendingTeam['pace'] * FieldSimulationConstants::PACE_PRESSING_MULTIPLIER) +
-                        ($defendingTeam['discipline'] * 0.2); // Discipline hỗ trợ pressing
-        
-        // Meta effects
-        if ($seasonMeta === 'pressing') {
-            $pressingPower += FieldSimulationConstants::META_PRESSING_BONUS_CHANCE;
-        }
-        if ($seasonMeta === 'high_line') {
-            $pressingPower += FieldSimulationConstants::META_HIGH_LINE_PRESSING_BONUS;
-        }
-        
-        // AttackingTeam resistance (control + creative)
-        $attackingResistance = $attackingTeam['control'] + ($attackingTeam['creative'] * 0.3);
-        
-        // Tính pressing chance
-        $totalPower = $pressingPower + $attackingResistance;
-        $pressingChance = ($totalPower == 0) 
-            ? 50 
-            : ($pressingPower / $totalPower) * 100;
-        
-        // Penalty khi ở sân nhà (xa goal đối phương)
-        // Càng xa goal đối phương (distanceToOpponentGoal lớn) → càng khó cướp bóng
-        if ($isOnHomeSide && $distanceToOpponentGoal > FieldSimulationConstants::FIELD_POSITION_MIDFIELD) {
-            // Ở sân nhà và xa goal đối phương → giảm pressing chance
-            $distancePenalty = ($distanceToOpponentGoal - FieldSimulationConstants::FIELD_POSITION_MIDFIELD) * 
-                             FieldSimulationConstants::PRESSING_DISTANCE_PENALTY_MULTIPLIER;
-            $pressingChance -= FieldSimulationConstants::PRESSING_BASE_PENALTY + $distancePenalty;
-            $pressingChance = max(0, $pressingChance); // Không được âm
-        }
-        
-        if (rand(1, 100) <= $pressingChance) {
-            // DefendingTeam pressing thành công → cướp bóng
-            $currentTeam = 3 - $currentTeam; // Đổi team
-            
-            // Kiểm tra Counter Attack (pace)
-            $pacePower = $defendingTeam['pace'];
-            $counterChance = ($pacePower / 100) * FieldSimulationConstants::COUNTER_CHANCE_BASE_MULTIPLIER * 100;
-            $counterChance = min(FieldSimulationConstants::COUNTER_CHANCE_MAX, max(FieldSimulationConstants::COUNTER_CHANCE_MIN, $counterChance));
-            
-            // Meta: Counter - tăng counter chance
-            if ($seasonMeta === 'counter') {
-                $counterChance += 10; // Tăng thêm 10%
-                $counterChance = min(100, $counterChance);
-            }
-            
-            if (rand(1, 100) <= $counterChance) {
-                // Counter attack
-                $maxDistance = ($seasonMeta === 'counter') 
-                    ? FieldSimulationConstants::META_COUNTER_MAX_DISTANCE 
-                    : FieldSimulationConstants::COUNTER_DISTANCE_MAX;
-                
-                $moveDistance = min(
-                    $maxDistance, 
-                    max(
-                        FieldSimulationConstants::COUNTER_DISTANCE_MIN, 
-                        (int)($pacePower / FieldSimulationConstants::COUNTER_DISTANCE_DIVISOR)
-                    )
-                );
-                
-                // currentTeam đã đổi sang defendingTeam (team cướp bóng)
-                // Team 1 phản công → tăng position (0→10)
-                // Team 2 phản công → giảm position (10→0)
-                if ($currentTeam == 1) {
-                    $fieldPosition = min(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2, (int)$fieldPosition + $moveDistance);
-                } else {
-                    $fieldPosition = max(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1, (int)$fieldPosition - $moveDistance);
-                }
-            }
-            // Nếu không có counter attack, bóng vẫn ở vị trí hiện tại, team đã đổi
-        }
-        // Nếu pressing không thành công, bóng vẫn ở vị trí hiện tại, team không đổi
     }
     
     /**
      * Xử lý shot
-     * Khi shot trượt → đổi team và về midfield
      */
-    private function handleShot(&$fieldPosition, &$currentTeam, $team1Stats, $team2Stats, 
-                               $team1, $team2, $time, &$matchData, &$seasonMeta)
+    private function handleShot($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
+                               $team1, $team2, $time, &$matchData)
     {
-        $shootingTeam = $currentTeam;
+        $shootingTeam = $this->getShootingTeam($fieldPosition, $currentTeam);
         $shootingTeamName = $shootingTeam == 1 ? $team1->name : $team2->name;
         
+        // Luôn có shot
         if ($shootingTeam == 1) {
             $matchData['team1_shots']++;
         } else {
@@ -483,17 +516,17 @@ class MatchSimulationService
         
         $distanceToGoal = $this->getDistanceToGoal($fieldPosition, $currentTeam);
         
-        // Tính shot_on_target chance
-        $onTargetBaseChance = FieldSimulationConstants::BASE_SHOT_ON_TARGET_CHANCE;
-        $distanceBonus = (3 - $distanceToGoal) * FieldSimulationConstants::SHOT_DISTANCE_BONUS_MULTIPLIER;
-        $attackBonus = $attackingTeam['attack'] * FieldSimulationConstants::SHOT_ATTACK_BONUS_MULTIPLIER;
-        
-        $onTargetChance = $onTargetBaseChance + $distanceBonus + $attackBonus;
-        $onTargetChance = min(FieldSimulationConstants::SHOT_ON_TARGET_MAX, max(FieldSimulationConstants::SHOT_ON_TARGET_MIN, $onTargetChance));
+        // Gần hơn → dễ on target hơn, attack càng cao càng tăng xác suất
+        $onTargetBaseChance = self::NORMAL_SHOT_ON_TARGET_CHANCE;
+        $onTargetBonus = max(0, (3 - $distanceToGoal)) * 5;
+        $onTargetChance = $onTargetBaseChance + $onTargetBonus + ($attackingTeam['attack'] * self::SHOT_ATTACK_BONUS_MULTIPLIER);
+        $onTargetChance = min(self::SHOT_ON_TARGET_MAX, max(self::SHOT_ON_TARGET_MIN, $onTargetChance));
         
         $isOnTarget = rand(1, 100) <= $onTargetChance;
         
         $result = [
+            'fieldPosition' => self::FIELD_POSITION_MIDFIELD,
+            'currentTeam' => $shootingTeam == 1 ? 2 : 1, 
             'goal' => false,
             'goalScoredBy' => null,
             'isPenalty' => false
@@ -506,10 +539,13 @@ class MatchSimulationService
                 $matchData['team2_shots_on_target']++;
             }
             
-            // Tính goal chance
-            $attackPower = $attackingTeam['attack'] + ($attackingTeam['mental'] * FieldSimulationConstants::GOAL_MENTAL_MULTIPLIER);
-            $defensePower = $defendingTeam['defense'] + ($defendingTeam['mental'] * FieldSimulationConstants::GOAL_MENTAL_MULTIPLIER);
-            $goalChance = ($attackPower / ($attackPower + $defensePower)) * FieldSimulationConstants::BASE_GOAL_CHANCE;
+            // Kiểm tra goal (attack, defense, mental) - sử dụng cộng để nổi bật chỉ số
+            $goalChance = $this->shotGoalChance(
+                $attackingTeam['attack'],
+                $attackingTeam['mental'],
+                $defendingTeam['goalkeeping'],
+                $defendingTeam['mental']
+            ) * 100;
             
             if (rand(1, 100) <= $goalChance) {
                 if ($shootingTeam == 1) {
@@ -518,21 +554,92 @@ class MatchSimulationService
                     $matchData['team2_score']++;
                 }
                 
-                $matchData['specialEvents'][] = "$time': GOAAAAAAAAAAAL by $shootingTeamName!";
+                $matchData['specialEvents'][] = "$time': GOAL by $shootingTeamName!";
                 $result['goal'] = true;
                 $result['goalScoredBy'] = $shootingTeam;
-                // Sau khi ghi bàn → về midfield và đổi team
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $shootingTeam == 1 ? 2 : 1;
+                $result['currentTeam'] = $shootingTeam == 1 ? 2 : 1;
             } else {
-                // Shot trượt → đổi team và về midfield
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $shootingTeam == 1 ? 2 : 1;
+                // Shot trượt → tỉ lệ cao cướp bóng, phản công (không đưa về midfield)
+                if (rand(1, 100) <= self::COUNTER_AFTER_SHOT_CHANCE) {
+                    $result['currentTeam'] = 3 - $shootingTeam; // Đội kia cướp bóng
+                    $result['fieldPosition'] = $this->handleCounterAttackAfterMiss($fieldPosition, $shootingTeam, $attackingTeam, $defendingTeam);
+                }
             }
         } else {
-            // Shot không on target → đổi team và về midfield
-            $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            $currentTeam = $shootingTeam == 1 ? 2 : 1;
+            // Shot không on target → tỉ lệ cao cướp bóng, phản công
+            if (rand(1, 100) <= self::COUNTER_STEAL_CHANCE) {
+                $result['currentTeam'] = 3 - $shootingTeam;
+                $result['fieldPosition'] = $this->handleCounterAttackAfterMiss($fieldPosition, $shootingTeam, $attackingTeam, $defendingTeam);
+            }
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Xử lý phản công sau khi shot trượt (tỉ lệ passing, speed, mental)
+     */
+    private function handleCounterAttackAfterMiss($fieldPosition, $shootingTeam, $attackingTeam, $defendingTeam)
+    {
+        // Phản công dựa theo công thức counter attack mới
+        $counterPower = (($defendingTeam['pace'] ?? 50) * 1.8) + (($defendingTeam['attack'] ?? 50) * 0.8) + (($defendingTeam['creative'] ?? 50) * 0.5);
+        $counterDistance = min(self::COUNTER_DISTANCE_MAX, max(self::COUNTER_DISTANCE_MIN, (int)($counterPower / self::COUNTER_DISTANCE_DIVISOR)));
+        
+        if ($shootingTeam == 1) {
+            // Team1 shot trượt → Team2 phản công về phía goal Team1
+            return max(self::FIELD_POSITION_GOAL_TEAM1, $fieldPosition - $counterDistance);
+        } else {
+            // Team2 shot trượt → Team1 phản công về phía goal Team2
+            return min(self::FIELD_POSITION_GOAL_TEAM2, $fieldPosition + $counterDistance);
+        }
+    }
+    
+    /**
+     * Di chuyển bóng
+     */
+    private function moveBall($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $team1, $team2)
+    {
+        $attackingTeam = $currentTeam == 1 ? $team1Stats : $team2Stats;
+        $defendingTeam = $currentTeam == 1 ? $team2Stats : $team1Stats;
+        
+        $buildUpPower = ($attackingTeam['control'] ?? 50) * 1.4
+                        + ($attackingTeam['creative'] ?? 50) * 1.5
+                        + ($attackingTeam['stamina'] ?? 50) * 0.5;
+        $stopProgress = ($defendingTeam['defense'] ?? 50) * 1.8
+                        + ($defendingTeam['discipline'] ?? 50) * 0.6;
+        
+        $zone = max(1, min(9, $fieldPosition));
+        $difficultyFactor = self::ZONE_PROGRESS_DIFFICULTY[$zone] ?? 1.0;
+        
+        $moveChance = ($buildUpPower / ($buildUpPower + ($stopProgress * $difficultyFactor))) * 100;
+        $moveChance = max(5, min(95, $moveChance));
+
+        $result = [
+            'newPosition' => $fieldPosition,
+            'counterAttack' => false
+        ];
+        
+        if (rand(1, 100) <= $moveChance) {
+            $moveDistance = self::MOVE_DISTANCE_NORMAL;
+            if (($attackingTeam['pace'] ?? 0) > self::SPEED_THRESHOLD && rand(1, 100) <= self::CREATIVE_BONUS_CHANCE) {
+                $moveDistance = self::MOVE_DISTANCE_FAST;
+            }
+            
+            if ($currentTeam == 1) {
+                $result['newPosition'] = max(self::FIELD_POSITION_GOAL_TEAM1, $fieldPosition - $moveDistance);
+            } else {
+                $result['newPosition'] = min(self::FIELD_POSITION_GOAL_TEAM2, $fieldPosition + $moveDistance);
+            }
+        } else {
+            $counterChance = ((($defendingTeam['control'] ?? 50) + (($defendingTeam['pace'] ?? 50) * self::PACE_PRESSING_MULTIPLIER) + (($defendingTeam['discipline'] ?? 50) * 0.2)) / 300) * 100;
+            if (rand(1, 100) <= $counterChance) {
+                $result['counterAttack'] = true;
+                if ($currentTeam == 1) {
+                    $result['newPosition'] = min(self::FIELD_POSITION_GOAL_TEAM2, $fieldPosition + self::COUNTER_MOVE_DISTANCE);
+                } else {
+                    $result['newPosition'] = max(self::FIELD_POSITION_GOAL_TEAM1, $fieldPosition - self::COUNTER_MOVE_DISTANCE);
+                }
+            }
         }
         
         return $result;
@@ -540,13 +647,11 @@ class MatchSimulationService
     
     /**
      * Xử lý foul
-     * Foul ở sân đối phương → penalty/freekick
-     * Foul ở sân nhà → bóng về midfield cho đội bạn
      */
-    private function handleFoul(&$fieldPosition, &$currentTeam, $team1Stats, $team2Stats, 
-                               $team1, $team2, $time, &$matchData, &$seasonMeta)
+    private function handleFoul($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
+                               $team1, $team2, $time, &$matchData)
     {
-        $foulingTeam = $currentTeam == 1 ? 2 : 1;
+        $foulingTeam = $currentTeam == 1 ? 2 : 1; // Đội phòng thủ phạm lỗi
         $foulingTeamName = $foulingTeam == 1 ? $team1->name : $team2->name;
         
         if ($foulingTeam == 1) {
@@ -554,71 +659,40 @@ class MatchSimulationService
         } else {
             $matchData['team2_fouls']++;
         }
-
-        $matchData['specialEvents'][] = "$time': Foul by $foulingTeamName!";
         
-        $isOnOpponentSide = $this->isBallOnOpponentSide($fieldPosition, $currentTeam);
+        $matchData['specialEvents'][] = "$time': Foul by $foulingTeamName";
         
-        if ($isOnOpponentSide) {
-            // Foul ở phía sân đối phương → có thể penalty hoặc free kick
-            $isPenaltyArea = false;
-            if ($currentTeam == 1) {
-                // Team 1 tấn công → penalty area đối phương là position 9, 10
-                $isPenaltyArea = in_array($fieldPosition, [
-                    FieldSimulationConstants::FIELD_POSITION_PENALTY_AREA_TEAM2,
-                    FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2
-                ]);
-            } else {
-                // Team 2 tấn công → penalty area đối phương là position 0, 1
-                $isPenaltyArea = in_array($fieldPosition, [
-                    FieldSimulationConstants::FIELD_POSITION_PENALTY_AREA_TEAM1,
-                    FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1
-                ]);
+        // Foul ở vị trí 1 hoặc 9 → có thể penalty
+        if ($fieldPosition == self::FIELD_POSITION_PENALTY_AREA_TEAM1 || 
+            $fieldPosition == self::FIELD_POSITION_PENALTY_AREA_TEAM2) {
+            if (rand(1, 100) <= self::PENALTY_CHANCE) {
+                return $this->handlePenalty($currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, $matchData);
             }
-            
-            if ($isPenaltyArea && rand(1, 100) <= FieldSimulationConstants::PENALTY_CHANCE) {
-                return $this->handlePenalty($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, $matchData, $seasonMeta);
-            }
-            
-            return $this->handleFreeKick($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, $matchData, $seasonMeta);
-        } else {
-            // Foul ở phía sân nhà → bóng về midfield cho đội bạn
-            $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            return [
-                'goal' => false,
-                'goalScoredBy' => null,
-                'isPenalty' => false
-            ];
         }
+        
+        // Free kick
+        return $this->handleFreeKick($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, $matchData);
     }
     
     /**
      * Xử lý free kick
+     * Tỉ lệ cao là shot, còn không thì move ball lên 1 hoặc 2
      */
-    private function handleFreeKick(&$fieldPosition, &$currentTeam, $team1Stats, $team2Stats, 
-                                   $team1, $team2, $time, &$matchData, &$seasonMeta)
+    private function handleFreeKick($fieldPosition, $currentTeam, $team1Stats, $team2Stats, 
+                                   $team1, $team2, $time, &$matchData)
     {
         $attackingTeam = $currentTeam == 1 ? $team1Stats : $team2Stats;
         $defendingTeam = $currentTeam == 1 ? $team2Stats : $team1Stats;
         
-        $distanceToGoal = $this->getDistanceToGoal($fieldPosition, $currentTeam);
-        
         $result = [
+            'fieldPosition' => self::FIELD_POSITION_MIDFIELD,
+            'currentTeam' => 3 - $currentTeam,
             'goal' => false,
             'goalScoredBy' => null,
             'isPenalty' => false
         ];
         
-        // Quyết định shot hay pass
-        $baseShotChance = FieldSimulationConstants::FREEKICK_SHOT_BASE_CHANCE;
-        $mentalBonus = $attackingTeam['mental'] * FieldSimulationConstants::FREEKICK_MENTAL_BONUS_MULTIPLIER;
-        $creativeBonus = $attackingTeam['creative'] * FieldSimulationConstants::FREEKICK_CREATIVE_BONUS_MULTIPLIER;
-        
-        $shotChance = $baseShotChance + $mentalBonus + $creativeBonus;
-        $shotChance = min(FieldSimulationConstants::FREEKICK_SHOT_CHANCE_MAX, max(FieldSimulationConstants::FREEKICK_SHOT_CHANCE_MIN, $shotChance));
-        
-        if (rand(1, 100) <= $shotChance) {
-            // Shot
+        if (rand(1, 100) <= self::FREE_KICK_SHOT_CHANCE) {
             $scoringTeam = $currentTeam;
             $scoringTeamName = $scoringTeam == 1 ? $team1->name : $team2->name;
             
@@ -628,14 +702,10 @@ class MatchSimulationService
                 $matchData['team2_shots']++;
             }
             
-            // Tính on_target
-            $onTargetBase = FieldSimulationConstants::FREEKICK_ON_TARGET_BASE;
-            $distanceBonus = (3 - $distanceToGoal) * FieldSimulationConstants::FREEKICK_DISTANCE_BONUS_MULTIPLIER;
-            $attackBonus = $attackingTeam['attack'] * FieldSimulationConstants::FREEKICK_ATTACK_BONUS_MULTIPLIER;
-            
-            $onTargetChance = $onTargetBase + $distanceBonus + $attackBonus;
-            $onTargetChance = min(FieldSimulationConstants::FREEKICK_ON_TARGET_MAX, max(FieldSimulationConstants::FREEKICK_ON_TARGET_MIN, $onTargetChance));
-            
+            $onTargetChance = self::FREE_KICK_ON_TARGET_CHANCE +
+                              (($attackingTeam['attack'] ?? 50) * self::SHOT_ATTACK_BONUS_MULTIPLIER) +
+                              (($attackingTeam['mental'] ?? 50) * self::SHOOT_DECISION_MENTAL_MULTIPLIER);
+            $onTargetChance = min(self::FREEKICK_ON_TARGET_MAX, max(self::FREEKICK_ON_TARGET_MIN, $onTargetChance));
             $isOnTarget = rand(1, 100) <= $onTargetChance;
             
             if ($isOnTarget) {
@@ -645,40 +715,32 @@ class MatchSimulationService
                     $matchData['team2_shots_on_target']++;
                 }
                 
-                // Tính goal
-                $attackPower = $attackingTeam['attack'] + ($attackingTeam['mental'] * FieldSimulationConstants::FREEKICK_GOAL_MENTAL_MULTIPLIER);
-                $defensePower = $defendingTeam['defense'] + ($defendingTeam['mental'] * FieldSimulationConstants::FREEKICK_GOAL_DEFENSE_MENTAL_MULTIPLIER);
-                $goalChance = ($attackPower / ($attackPower + $defensePower)) * FieldSimulationConstants::FREEKICK_GOAL_BASE;
+                $freeKickPower = (($attackingTeam['creative'] ?? 50) * 1.3)
+                                 + (($attackingTeam['attack'] ?? 50) * 0.8)
+                                 + (($attackingTeam['mental'] ?? 50) * 1.0);
+                $savePower = (($defendingTeam['goalkeeping'] ?? 50) * 1.4)
+                             + (($defendingTeam['mental'] ?? 50) * 0.9);
+                $goalChance = $savePower > 0 ? $freeKickPower / ($freeKickPower + $savePower) : 0.0;
                 
-                if (rand(1, 100) <= $goalChance) {
+                if (rand(1, 100) <= $goalChance * 100) {
                     if ($scoringTeam == 1) {
                         $matchData['team1_score']++;
                     } else {
                         $matchData['team2_score']++;
                     }
                     
-                    $matchData['specialEvents'][] = "$time': Free Kick GOAAAAAAAAAAAL by $scoringTeamName!";
+                    $matchData['specialEvents'][] = "$time': " . (rand(1, 100) <= $this->specialEventChance($attackingTeam['luck']) ? 'Lucky Free Kick GOAL by ' : 'Free Kick GOAL by ') . $scoringTeamName . '!';
                     $result['goal'] = true;
                     $result['goalScoredBy'] = $scoringTeam;
+                    $result['currentTeam'] = $scoringTeam == 1 ? 2 : 1;
                 }
             }
-            
-            // Sau free kick → về midfield và đổi team
-            $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            $currentTeam = $scoringTeam == 1 ? 2 : 1;
         } else {
-            // Pass → Moveball
-            if ($seasonMeta === 'long_ball' && rand(1, 100) <= FieldSimulationConstants::META_LONG_BALL_CHANCE) {
-                $moveDistance = FieldSimulationConstants::META_LONG_BALL_MOVE_DISTANCE;
-            } else {
-                $moveDistance = rand(FieldSimulationConstants::FREEKICK_PASS_DISTANCE_MIN, FieldSimulationConstants::FREEKICK_PASS_DISTANCE_MAX);
-            }
-            
-            // Team 1 tấn công → tăng position, Team 2 tấn công → giảm position
+            $moveDistance = rand(self::FREEKICK_PASS_DISTANCE_MIN, self::FREEKICK_PASS_DISTANCE_MAX);
             if ($currentTeam == 1) {
-                $fieldPosition = min(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM2, (int)$fieldPosition + $moveDistance);
+                $result['fieldPosition'] = max(self::FIELD_POSITION_GOAL_TEAM1, $fieldPosition - $moveDistance);
             } else {
-                $fieldPosition = max(FieldSimulationConstants::FIELD_POSITION_GOAL_TEAM1, (int)$fieldPosition - $moveDistance);
+                $result['fieldPosition'] = min(self::FIELD_POSITION_GOAL_TEAM2, $fieldPosition + $moveDistance);
             }
         }
         
@@ -687,35 +749,28 @@ class MatchSimulationService
     
     /**
      * Xử lý penalty
+     * 100% sẽ shot. Tỉ lệ nhỏ hơn một chút là shot_on_target, tỉ lệ nhỏ hơn là ghi bàn
      */
-    private function handlePenalty(&$fieldPosition, &$currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, &$matchData, &$seasonMeta)
+    private function handlePenalty($currentTeam, $team1Stats, $team2Stats, $team1, $team2, $time, &$matchData)
     {
-        // currentTeam là team được hưởng penalty (team bị foul)
         $attackingTeam = $currentTeam == 1 ? $team1Stats : $team2Stats;
         $defendingTeam = $currentTeam == 1 ? $team2Stats : $team1Stats;
         
         $scoringTeam = $currentTeam;
         $scoringTeamName = $scoringTeam == 1 ? $team1->name : $team2->name;
         
-        // 100% sẽ shot
         if ($scoringTeam == 1) {
             $matchData['team1_shots']++;
         } else {
             $matchData['team2_shots']++;
         }
         
-        // Tính shot_on_target (attack + mental + creative)
-        $onTargetBase = FieldSimulationConstants::PENALTY_ON_TARGET_BASE;
-        $attackBonus = $attackingTeam['attack'] * FieldSimulationConstants::PENALTY_ATTACK_BONUS_MULTIPLIER;
-        $mentalBonus = $attackingTeam['mental'] * FieldSimulationConstants::PENALTY_MENTAL_BONUS_MULTIPLIER;
-        $creativeBonus = $attackingTeam['creative'] * FieldSimulationConstants::PENALTY_CREATIVE_BONUS_MULTIPLIER;
-        
-        $onTargetChance = $onTargetBase + $attackBonus + $mentalBonus + $creativeBonus;
-        $onTargetChance = min(FieldSimulationConstants::PENALTY_ON_TARGET_MAX, max(FieldSimulationConstants::PENALTY_ON_TARGET_MIN, $onTargetChance));
-        
+        $onTargetChance = min(self::PENALTY_ON_TARGET_MAX, max(self::PENALTY_ON_TARGET_MIN, self::BASE_SHOT_CHANCE + (($attackingTeam['attack'] ?? 50) * self::PENALTY_ATTACK_BONUS_MULTIPLIER) + (($attackingTeam['mental'] ?? 50) * self::PENALTY_MENTAL_BONUS_MULTIPLIER)));
         $isOnTarget = rand(1, 100) <= $onTargetChance;
         
         $result = [
+            'fieldPosition' => self::FIELD_POSITION_MIDFIELD,
+            'currentTeam' => 3 - $currentTeam,
             'goal' => false,
             'goalScoredBy' => null,
             'isPenalty' => true
@@ -728,37 +783,26 @@ class MatchSimulationService
                 $matchData['team2_shots_on_target']++;
             }
             
-            // Tính goal (attack + mental + creative vs defense + mental)
-            $attackPower = $attackingTeam['attack'] + 
-                          ($attackingTeam['mental'] * FieldSimulationConstants::PENALTY_GOAL_ATTACK_MENTAL_MULTIPLIER) + 
-                          ($attackingTeam['creative'] * FieldSimulationConstants::PENALTY_GOAL_ATTACK_CREATIVE_MULTIPLIER);
-            $defensePower = $defendingTeam['defense'] + ($defendingTeam['mental'] * FieldSimulationConstants::PENALTY_GOAL_DEFENSE_MENTAL_MULTIPLIER);
-            $goalChance = ($attackPower / ($attackPower + $defensePower)) * FieldSimulationConstants::PENALTY_GOAL_BASE;
+            $penaltyShot = (($attackingTeam['attack'] ?? 50) * 1.4) + (($attackingTeam['mental'] ?? 50) * 1.2);
+            $penaltySave = (($defendingTeam['goalkeeping'] ?? 50) * 1.4) + (($defendingTeam['mental'] ?? 50) * 0.9);
+            $goalChance = $penaltySave > 0 ? $penaltyShot / ($penaltyShot + $penaltySave) : 0.0;
             
-            if (rand(1, 100) <= $goalChance) {
+            if (rand(1, 100) <= $goalChance * 100) {
                 if ($scoringTeam == 1) {
                     $matchData['team1_score']++;
                 } else {
                     $matchData['team2_score']++;
                 }
                 
-                $matchData['specialEvents'][] = "$time': Penalty GOAAAAAAAAAAAL by $scoringTeamName!";
+                $matchData['specialEvents'][] = "$time': " . (rand(1, 100) <= $this->specialEventChance($attackingTeam['luck']) ? 'Lucky Penalty GOAL by ' : 'Penalty GOAL by ') . $scoringTeamName . '!';
                 $result['goal'] = true;
                 $result['goalScoredBy'] = $scoringTeam;
-                // Sau khi ghi bàn, đưa về midfield và đổi team
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $scoringTeam == 1 ? 2 : 1;
+                $result['currentTeam'] = $scoringTeam == 1 ? 2 : 1;
             } else {
                 $matchData['specialEvents'][] = "$time': Penalty saved!";
-                // Không ghi bàn → về midfield và đổi team
-                $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-                $currentTeam = $scoringTeam == 1 ? 2 : 1;
             }
         } else {
             $matchData['specialEvents'][] = "$time': Penalty saved!";
-            // Không on target → về midfield và đổi team
-            $fieldPosition = (int)FieldSimulationConstants::FIELD_POSITION_MIDFIELD;
-            $currentTeam = $scoringTeam == 1 ? 2 : 1;
         }
         
         return $result;
@@ -829,10 +873,10 @@ class MatchSimulationService
         $defensePower = $defendingTeam->defense;
         
         // add mental to attack power and defense power
-        $attackPower = $attackPower + ($attackingTeam->mental * FieldSimulationConstants::GOAL_MENTAL_MULTIPLIER);
-        $defensePower = $defensePower + ($defendingTeam->mental * FieldSimulationConstants::GOAL_MENTAL_MULTIPLIER);
+        $attackPower = $attackPower + ($attackingTeam->mental * 0.1);
+        $defensePower = $defensePower + ($defendingTeam->mental * 0.1);
         
-        $successChance = ($attackPower / ($attackPower + $defensePower)) * FieldSimulationConstants::PENALTY_GOAL_BASE;
+        $successChance = $defensePower > 0 ? ($attackPower / ($attackPower + $defensePower)) : 1;
         
         return rand(1, 100) <= $successChance ? 1 : 0;
     }

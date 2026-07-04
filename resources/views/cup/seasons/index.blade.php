@@ -59,10 +59,9 @@
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger">Delete</button>
                         </form>
-                        <a href="{{ route('cup.seasons.show', $season->id) }}" class="btn btn-info">Xem vòng bảng</a>
+                        <a href="{{ route('cup.seasons.show', $season->id) }}" class="btn btn-info">Vòng bảng</a>
                         @if ($season->match_completion_rate == 100)
-                            <a href="{{ route('cup.eliminate.create', $season->id) }}" class="btn btn-success">Tạo V.Loại</a>
-                            <a href="{{ route('cup.eliminate.view', $season->id) }}" class="btn btn-primary">Xem V.Loại</a> <!-- Nút mới -->
+                            <a href="{{ route('cup.eliminate.create', $season->id) }}" class="btn btn-primary">Vòng Loại</a>
 
                         @endif
                     </td>

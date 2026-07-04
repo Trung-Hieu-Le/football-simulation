@@ -22,9 +22,7 @@ class TeamCupController extends Controller
         $teamHistories = DB::table('cup_standings')
             ->join('teams', 'teams.id', '=', 'cup_standings.team_id')
             ->join('cup_seasons', 'cup_seasons.id', '=', 'cup_standings.season_id')
-            ->leftJoin('cup_positions', 'cup_positions.cup_standing_id', '=', 'cup_standings.id')
-            ->select('cup_standings.*', 'teams.name as team_name', 'cup_seasons.season',
-                     'cup_positions.position', 'cup_positions.result as title')
+            ->select('cup_standings.*', 'teams.name as team_name', 'cup_seasons.season')
             ->get();
         $regions = DB::table('regions')->get();
 

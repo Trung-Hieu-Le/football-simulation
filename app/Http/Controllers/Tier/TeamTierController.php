@@ -22,9 +22,7 @@ class TeamTierController extends Controller
         $teamHistories = DB::table('tier_standings')
         ->join('teams', 'teams.id', '=', 'tier_standings.team_id')
         ->join('tier_seasons', 'tier_seasons.id', '=', 'tier_standings.season_id')
-        ->leftJoin('tier_positions', 'tier_positions.tier_standing_id', '=', 'tier_standings.id')
-        ->select('tier_standings.*', 'teams.name as team_name', 'tier_seasons.season',
-                 'tier_positions.position', 'tier_positions.result')
+        ->select('tier_standings.*', 'teams.name as team_name', 'tier_seasons.season')
         ->get();
         $regions = DB::table('regions')->get();
 
@@ -72,9 +70,7 @@ class TeamTierController extends Controller
         $histories = DB::table('tier_standings')
             ->where('team_id', $id)
             ->join('tier_seasons', 'tier_seasons.id', '=', 'tier_standings.season_id')
-            ->leftJoin('tier_positions', 'tier_positions.tier_standing_id', '=', 'tier_standings.id')
-            ->select('tier_standings.*', 'tier_seasons.season',
-                     'tier_positions.position', 'tier_positions.result')
+            ->select('tier_standings.*', 'tier_seasons.season')
             ->get();
 
         return view('tier.teams.history', compact('team', 'histories'));
