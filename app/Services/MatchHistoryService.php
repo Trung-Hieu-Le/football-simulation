@@ -2,88 +2,185 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Models\Team;
+use App\Models\League\Standing as LeagueStanding;
+use App\Models\League\Position as LeaguePosition;
+use App\Models\Cup\Standing as CupStanding;
+use App\Models\Cup\Position as CupPosition;
+use App\Enums\CupSeasonResult;
 
 class MatchHistoryService
 {
-    /**
-     * Cập nhật lịch sử cho eliminate stage
-     */
-    public function updateEliminateHistory($teamId, $seasonId, $goalsScored, $goalsConceded, 
-                                         $fouls, $possession, $title)
+    protected EloRatingService $eloService;
+
+    public function __construct(EloRatingService $eloService)
     {
-        if (!$teamId) return;
-        
-        $history = DB::table('cup_standings')
-            ->where('team_id', $teamId)
-            ->where('season_id', $seasonId)
-            ->first();
-        
-        if (!$history) return;
-        
-        $matchPlayed = $history->match_played + 1;
-        $goalScored = $history->goal_scored + $goalsScored;
-        $goalConceded = $history->goal_conceded + $goalsConceded;
-        $goalDifference = $goalScored - $goalConceded;
-        $totalFouls = $history->foul + $fouls;
-        $averagePossession = ($history->average_possession * $history->match_played + $possession) / $matchPlayed;
-        $win = $history->win;
-        $draw = $history->draw;
-        $lose = $history->lose;
-        
-        if ($goalsScored > $goalsConceded) {
-            $win += 1;
-            DB::table('teams')->where('id', $teamId)->increment('form', 5);
-        } elseif ($goalsScored == $goalsConceded) {
-            $draw += 1;
-        } else {
-            $lose += 1;
-            DB::table('teams')->where('id', $teamId)->decrement('form', 5);
+        $this->eloService = $eloService;
+    }
+
+    /**
+     * Update match history for League match
+     */
+    public function updateLeagueMatchHistory(
+        int $team1Id,
+        int $team2Id,
+        int $seasonId,
+        string $division,
+        int $team1Score,
+        int $team2Score,
+        int $team1Fouls,
+        int $team2Fouls,
+        int $team1Possession,
+        int $team2Possession
+    ): void {
+        $team1 = Team::find($team1Id);
+        $team2 = Team::find($team2Id);
+
+        if (!$team1 || !$team2) {
+            return;
         }
-        
-        $form = DB::table('teams')->where('id', $teamId)->value('form');
-        $form = max(5, min(100, $form));
-        DB::table('teams')->where('id', $teamId)->update(['form' => $form]);
-        
-        $standing = DB::table('cup_standings')->updateOrInsert(
+
+        $this->updateLeagueStanding($team1Id, $seasonId, $division, $team1Score, $team2Score, $team1Fouls, $team1Possession);
+        $this->updateLeagueStanding($team2Id, $seasonId, $division, $team2Score, $team1Score, $team2Fouls, $team2Possession);
+
+        $this->updateTeamForm($team1, $team1Score > $team2Score);
+        $this->updateTeamForm($team2, $team2Score > $team1Score);
+
+        $this->eloService->updateEloAfterMatch($team1, $team2, $team1Score, $team2Score);
+    }
+
+    /**
+     * Update match history for Cup group stage match
+     */
+    public function updateCupGroupStageHistory(
+        int $team1Id,
+        int $team2Id,
+        int $seasonId,
+        int $team1Score,
+        int $team2Score,
+        int $team1Fouls,
+        int $team2Fouls,
+        int $team1Possession,
+        int $team2Possession
+    ): void {
+        $team1 = Team::find($team1Id);
+        $team2 = Team::find($team2Id);
+
+        if (!$team1 || !$team2) {
+            return;
+        }
+
+        $this->updateCupStanding($team1Id, $seasonId, $team1Score, $team2Score, $team1Fouls, $team1Possession);
+        $this->updateCupStanding($team2Id, $seasonId, $team2Score, $team1Score, $team2Fouls, $team2Possession);
+
+        $this->updateTeamForm($team1, $team1Score > $team2Score);
+        $this->updateTeamForm($team2, $team2Score > $team1Score);
+
+        $this->eloService->updateEloAfterMatch($team1, $team2, $team1Score, $team2Score);
+    }
+
+    /**
+     * Update match history for Cup eliminate stage match
+     */
+    public function updateCupEliminateHistory(
+        int $team1Id,
+        int $team2Id,
+        int $seasonId,
+        int $team1Score,
+        int $team2Score,
+        int $team1Fouls,
+        int $team2Fouls,
+        int $team1Possession,
+        int $team2Possession,
+        string $round
+    ): void {
+        $team1 = Team::find($team1Id);
+        $team2 = Team::find($team2Id);
+
+        if (!$team1 || !$team2) {
+            return;
+        }
+
+        $winnerId = $team1Score > $team2Score ? $team1Id : $team2Id;
+        $isTeam1Winner = $winnerId === $team1Id;
+
+        $team1Result = CupSeasonResult::fromRound($round, $isTeam1Winner);
+        $team2Result = CupSeasonResult::fromRound($round, !$isTeam1Winner);
+
+        $this->updateCupStanding($team1Id, $seasonId, $team1Score, $team2Score, $team1Fouls, $team1Possession, $team1Result->value);
+        $this->updateCupStanding($team2Id, $seasonId, $team2Score, $team1Score, $team2Fouls, $team2Possession, $team2Result->value);
+
+        $this->updateTeamForm($team1, $isTeam1Winner);
+        $this->updateTeamForm($team2, !$isTeam1Winner);
+
+        $this->eloService->updateEloAfterMatch($team1, $team2, $team1Score, $team2Score);
+    }
+
+    protected function updateLeagueStanding(
+        int $teamId,
+        int $seasonId,
+        string $division,
+        int $goalsScored,
+        int $goalsConceded,
+        int $fouls,
+        int $possession
+    ): void {
+        $standing = LeagueStanding::firstOrCreate(
             ['team_id' => $teamId, 'season_id' => $seasonId],
-            [
-                'match_played' => $matchPlayed,
-                'goal_scored' => $goalScored,
-                'goal_conceded' => $goalConceded,
-                'goal_difference' => $goalDifference,
-                'foul' => $totalFouls,
-                'average_possession' => round($averagePossession, 2),
-                'win' => $win,
-                'draw' => $draw,
-                'lose' => $lose,
-                'updated_at' => now(),
-            ]
+            ['division' => $division]
         );
-        
-        // Update position và result vào cup_positions
-        $standingId = DB::table('cup_standings')
-            ->where('team_id', $teamId)
-            ->where('season_id', $seasonId)
-            ->value('id');
-        
-        if ($standingId) {
-            DB::table('cup_positions')->updateOrInsert(
-                ['cup_standing_id' => $standingId],
+
+        $result = $this->getMatchResult($goalsScored, $goalsConceded);
+        $standing->updateFromMatch($goalsScored, $goalsConceded, $possession, $fouls, $result);
+    }
+
+    protected function updateCupStanding(
+        int $teamId,
+        int $seasonId,
+        int $goalsScored,
+        int $goalsConceded,
+        int $fouls,
+        int $possession,
+        ?string $result = null
+    ): void {
+        $standing = CupStanding::firstOrCreate(
+            ['team_id' => $teamId, 'season_id' => $seasonId]
+        );
+
+        $matchResult = $this->getMatchResult($goalsScored, $goalsConceded);
+        $standing->updateFromMatch($goalsScored, $goalsConceded, $possession, $fouls, $matchResult);
+
+        if ($result) {
+            CupPosition::updateOrCreate(
+                ['cup_standing_id' => $standing->id],
                 [
                     'season_id' => $seasonId,
-                    'result' => $title,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'result' => $result,
                 ]
             );
         }
     }
-    
+
+    protected function updateTeamForm(Team $team, bool $won): void
+    {
+        $team->updateForm($won);
+    }
+
+    protected function getMatchResult(int $goalsScored, int $goalsConceded): string
+    {
+        if ($goalsScored > $goalsConceded) {
+            return 'win';
+        } elseif ($goalsScored < $goalsConceded) {
+            return 'lose';
+        }
+        return 'draw';
+    }
+
     /**
-     * Cập nhật lịch sử cho group stage
+     * Legacy method - Update cup eliminate history (deprecated, use updateCupEliminateHistory)
      */
-    public function updateGroupStageHistory($teamId, $seasonId, $goalsScored, $goalsConceded, $fouls, $possession)
+    public function updateEliminateHistory($teamId, $seasonId, $goalsScored, $goalsConceded, 
+                                        $fouls, $possession, $title)
     {
         if (!$teamId) return;
         

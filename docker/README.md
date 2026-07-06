@@ -29,6 +29,22 @@ NGINX_HTTP_PORT=80
 docker compose up -d --build
 ```
 
+### 2.1. Cài đặt Composer dependencies trong container
+
+Nếu bạn vừa khởi động container lần đầu hoặc thấy lỗi `vendor/autoload.php` thiếu, chạy:
+
+```bash
+docker compose exec php composer install
+```
+
+Nếu cần cập nhật package theo `composer.json`/`composer.lock`:
+
+```bash
+docker compose exec php composer update
+```
+
+Sau khi cài xong, Laravel sẽ có thể boot lại bình thường.
+
 ### 3. Chạy Laravel migrations
 
 ```bash
