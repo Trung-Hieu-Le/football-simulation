@@ -7,29 +7,28 @@ use App\Models\Cup\Season;
 use App\Models\Cup\GroupStageMatch;
 use App\Services\Simulation\MatchSimulator;
 use App\Services\MatchHistoryService;
+use App\Services\CupGroupStageService;
 use Illuminate\Http\Request;
 
 class MatchController extends Controller
 {
-    protected MatchSimulator $matchSimulator;
-    protected MatchHistoryService $historyService;
-
-    public function __construct(MatchSimulator $matchSimulator, MatchHistoryService $historyService)
-    {
-        $this->matchSimulator = $matchSimulator;
-        $this->historyService = $historyService;
+    public function __construct(
+        protected MatchSimulator $matchSimulator,
+        protected MatchHistoryService $historyService,
+        protected CupGroupStageService $groupStageService,
+    ) {
     }
 
     public function index($seasonId)
     {
         $season = Season::findOrFail($seasonId);
-        
+
         $matches = GroupStageMatch::where('season_id', $seasonId)
-                                  ->with(['team1', 'team2'])
-                                  ->orderBy('group')
-                                  ->orderBy('round')
-                                  ->get()
-                                  ->groupBy(['group', 'round']);
+            ->with(['team1', 'team2'])
+            ->orderBy('group')
+            ->orderBy('round')
+            ->get()
+            ->groupBy(['group', 'round']);
 
         return view('cup.matches.index', compact('season', 'matches'));
     }
@@ -37,38 +36,42 @@ class MatchController extends Controller
     public function simulate($seasonId, $round)
     {
         $season = Season::findOrFail($seasonId);
-        
+
         $matches = GroupStageMatch::where('season_id', $seasonId)
-                                  ->where('round', $round)
-                                  ->whereNull('team1_score')
-                                  ->whereNull('team2_score')
-                                  ->with(['team1', 'team2'])
-                                  ->get();
+            ->where('round', $round)
+            ->whereNull('team1_score')
+            ->whereNull('team2_score')
+            ->with(['team1', 'team2'])
+            ->get();
 
         foreach ($matches as $match) {
             $this->simulateMatch($match, $season->meta);
         }
 
+        $this->groupStageService->syncGroupPositions($season);
+
         return redirect()->route('cup.matches.index', $seasonId)
-                        ->with('success', "Round {$round} simulated successfully!");
+            ->with('success', "Round {$round} simulated successfully!");
     }
 
     public function simulateAll($seasonId)
     {
         $season = Season::findOrFail($seasonId);
-        
+
         $matches = GroupStageMatch::where('season_id', $seasonId)
-                                  ->whereNull('team1_score')
-                                  ->whereNull('team2_score')
-                                  ->with(['team1', 'team2'])
-                                  ->get();
+            ->whereNull('team1_score')
+            ->whereNull('team2_score')
+            ->with(['team1', 'team2'])
+            ->get();
 
         foreach ($matches as $match) {
             $this->simulateMatch($match, $season->meta);
         }
 
+        $this->groupStageService->syncGroupPositions($season);
+
         return redirect()->route('cup.seasons.show', $seasonId)
-                        ->with('success', 'All group stage matches simulated successfully!');
+            ->with('success', 'All group stage matches simulated successfully!');
     }
 
     protected function simulateMatch(GroupStageMatch $match, string $seasonMeta): void
@@ -105,8 +108,8 @@ class MatchController extends Controller
     public function show($matchId)
     {
         $match = GroupStageMatch::with(['team1', 'team2', 'season'])
-                                ->findOrFail($matchId);
-        
+            ->findOrFail($matchId);
+
         return view('cup.matches.show', compact('match'));
     }
 }

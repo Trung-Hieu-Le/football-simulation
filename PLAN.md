@@ -37,7 +37,7 @@ Tài liệu này mô tả toàn bộ kế hoạch refactor dự án Laravel `foo
 |----------|-------|
 | Simulation | Dùng **10 stats** mới, logic theo spec (xem mục 6) |
 | League mode | 3 **division**, số đội **chia hết cho 12**, 25% lên/xuống hạng mỗi division |
-| Cup mode | **32 hoặc 64** team, vòng loại + knockout, auto-gen bracket |
+| Cup mode | **32 hoặc 64** team, **8 groups A–H**, single RR vòng bảng, top 4/group → R16 knockout, bracket tree UI |
 | Kiến trúc | Tách constants, enums, services; bỏ logic lặp |
 | Database | Xóa migrations cũ, tạo migrations mới hoàn toàn |
 | ELO | Điểm ELO trên `teams`, dùng statistics + chia pot cup |
@@ -294,7 +294,7 @@ Giống `league_seasons`, thêm validate `teams_count` ∈ {32, 64}.
 |--------|------|-------|
 | id | int, PK, AI | |
 | season_id | int, FK | |
-| group | varchar(255) | A, B, C... (8 groups cho 32 team) |
+| group | varchar(255) | A–H (luôn 8 groups cho cả 32 và 64 team) |
 | team_ids | varchar(1015) | JSON array |
 | created_at, updated_at | timestamp | |
 
@@ -308,8 +308,9 @@ Giống schema hiện tại (`cup_group_stage_matches` trong SQL dump).
 |--------|------|-------|
 | id | int, PK, AI | |
 | season_id | int, FK | |
-| round | varchar(45) | `round_of_32`, `round_of_16`, `quarter_finals`, `semi_finals`, `third_place`, `final` |
-| branch | varchar(45) | 1–4 |
+| round | varchar(45) | `round_of_16`, `round_of_8`, `quarter_finals`, `semi_finals`, `third_place`, `final` |
+| branch | varchar(45) | 1–4 (nhánh BRANCHES_32) |
+| slot_index | smallint | Vị trí trên cây nhị phân trong round (0-based) |
 | team1_id, team2_id | int, nullable | |
 | team1_score, team2_score | tinyint, nullable | |
 | team1_possession, team2_possession | int | default 50 |
@@ -380,8 +381,8 @@ enum LeagueSeasonResult: string {
 ```php
 enum CupSeasonResult: string {
     case GROUP_STAGE   = 'group_stage';    // default
-    case ROUND_OF_32   = 'round_of_32';
     case ROUND_OF_16   = 'round_of_16';
+    case ROUND_OF_8    = 'round_of_8';
     case QUARTER_FINAL = 'quarter_finals';
     case SEMI_FINAL    = 'semi_finals';
     case CHAMPION      = 'champion';
@@ -594,11 +595,11 @@ class CupPotSeedingService {
   }
 
   /**
-   * Rút thăm: mỗi group nhận 1 team từ mỗi pot (cân bằng).
-   * 32 team → 8 groups (A–H), 4 team/group
-   * 64 team → 16 groups (A–P), 4 team/group
+   * Rút thăm: mỗi group A–H nhận 1 team từ mỗi pot (shuffle trong pot).
+   * 32 team → 8 groups × 4 teams (4 pots × 8 teams/pot)
+   * 64 team → 8 groups × 8 teams (8 pots × 8 teams/pot)
    */
-  public function drawGroups(array $pots, int $teamCount): array { ... }
+  public function drawGroups(array $pots): array { ... }
 }
 ```
 
@@ -611,7 +612,7 @@ Trách nhiệm:
 - `syncKnockoutBracket($seasonId): void` — gọi sau mỗi trận group stage
 - `createEliminateStage($seasonId)` — logic từ `SeasonCupController::createEliminateStage()`
 
-**Bracket round_of_32 (32 team, 8 groups):**
+**Bracket R16 (32 knockout teams, 8 groups A–H, top 4/group):**
 
 ```
 Branch 1: A1-B4, D2-G3, E1-F4, H2-C3
@@ -620,18 +621,21 @@ Branch 3: C1-D4, A3-F2, G1-H4, B2-E3
 Branch 4: F1-G4, A2-D3, B1-C4, E2-H3
 ```
 
-Key format: `{Group}{Position}` — position 1–4 từ `cup_positions` sau group stage.
+Key format: `{Group}{Rank}` — rank 1–4 từ standings sau vòng bảng.
 
-**Các round tiếp theo (placeholder, team null):**
+**Knockout structure (luôn 32 đội, bắt đầu R16):**
 ```
-round_of_16: 8 matches
+round_of_16: 16 matches (slot_index 0–15)
+round_of_8: 8
 quarter_finals: 4
 semi_finals: 2
-third_place: 1
+third_place: 1  ← simulate trước final
 final: 1
 ```
 
-**Auto-update:** Sau mỗi group match simulate → `syncKnockoutBracket()`. Khi group stage xong, tạo/update `cup_eliminate_stage_matches` với team IDs chính xác từ standings.
+**Advance winners:** theo `slot_index` (winner slot 2k + 2k+1 → parent slot k).
+
+**Auto-update:** Sau mỗi trận vòng bảng → sync rank. Khi xong vòng bảng → populate R16 từ `BRANCHES_32`.
 
 ### 7.5 `MatchHistoryService`
 
@@ -814,48 +818,56 @@ Khi `store()` season mới:
 
 ---
 
-## 11. Cup mode — nghiệp vụ
+## 11. Cup mode — nghiệp vụ (Hướng A)
 
 ### 11.1 Ràng buộc
 
-- `teams_count` = **32** hoặc **64** only
-- 32 team: 8 groups (A–H), 4 team/group
-- 64 team: 16 groups (A–P), 4 team/group
+- `teams_count` ∈ **{32, 64}**
+- **Luôn 8 groups A–H**
+- Pot count = đội/group:
+  - **32 team:** 4 đội/group, **4 pots**, 8 đội/pot
+  - **64 team:** 8 đội/group, **8 pots**, 8 đội/pot
 
-### 11.2 Pot seeding (khi tạo season)
+### 11.2 Pot seeding
 
-1. Lấy top N teams theo ELO (N = 32 hoặc 64)
-2. Chia 4 pot đều nhau
-3. Draw: mỗi group 1 team từ pot 1, 1 từ pot 2, 1 từ pot 3, 1 từ pot 4 (shuffle trong pot)
+1. Chọn N đội theo ELO (N = 32 hoặc 64)
+2. Chia N pots đều (pot 1 = top 8 ELO, pot 2 = tiếp theo, …)
+3. Draw: mỗi group nhận **1 đội từ mỗi pot** (shuffle trong pot)
 
-### 11.3 Group stage
+### 11.3 Group stage — single round-robin
 
-- Round-robin trong mỗi group (6 trận/group cho 4 team)
-- Top 2 (hoặc top 4 cho knockout 32) — **hiện tại dùng top 4** cho round_of_32
-- Sau mỗi trận: update `cup_standings`, `cup_positions` (position trong group)
+Dùng **circle method** (`RoundRobinService`), **single leg** (không lượt đi-về).
 
-### 11.4 Knockout auto-update
+| Group size | Trận/group | Trận/đội |
+|------------|------------|----------|
+| 4 | 6 | 3 |
+| 8 | 28 | 7 |
 
-```
-Sau simulate group match:
-  IF all group matches have scores:
-    CupKnockoutService::createEliminateStage(seasonId)
-  ELSE:
-    // Optional: pre-create empty bracket, fill teams as positions finalize
-    // Hoặc chỉ tạo khi group stage hoàn tất (đơn giản hơn)
-```
+**Qualification:** **Top 4** mỗi group → knockout (32 đội).
+- 32-team cup: cả 4 đội/group đều vào (không loại ai)
+- 64-team cup: rank 5–8 **bị loại**
 
-Khi group standings thay đổi (position 1–4), nếu knockout đã tồn tại → **re-sync** `team1_id`/`team2_id` ở round_of_32 theo bracket formula.
+**Sau mỗi trận:** update `cup_standings`, sync rank (`cup_positions`).
+
+### 11.4 Knockout
+
+- Populate **R16** từ `BRANCHES_32` (16 trận, 4 branches)
+- Winner advance theo **`slot_index`** trên cây nhị phân
+- **Third place trước Final** (simulate + UI)
+- UI: CSS Grid bracket tree (`components/bracket-tree`)
 
 ### 11.5 Knockout simulate
 
-- Hòa → extra time → penalty shootout (logic hiện tại `EliminateMatchController`)
-- Winner advance qua `EliminateMatchService::handleNextMatch()`
-- Loser semi → third_place match
+- Hòa → penalty shootout
+- Loser bán kết → third_place
+- Thứ tự round: R16 → QF → SF → **third_place** → **final**
 
-### 11.6 Cup standings highlight (group)
+### 11.6 Group standings highlight
 
-- Top 2 (hoặc 4): `table-success` — vùng đi tiếp
+| Mode | UI |
+|------|-----|
+| 32 team | Top 4 (tất cả) — `table-success` |
+| 64 team | Rank 1–4 `table-success`, rank 5–8 `table-danger` |
 
 ---
 
@@ -960,7 +972,7 @@ php artisan migrate:fresh --seed
 - [ ] Mỗi group có 1 team từ mỗi pot
 - [ ] Group stage simulate + BXH
 - [ ] Knockout auto tạo khi group xong
-- [ ] Bracket round_of_32 đúng formula A1-B4...
+- [ ] Bracket R16 đúng formula BRANCHES_32 (A1-B4...)
 - [ ] Knockout simulate → champion, runner_up, 3rd, 4th
 - [ ] Breadcrumb 4 mục hoạt động
 - [ ] ELO thay đổi sau trận

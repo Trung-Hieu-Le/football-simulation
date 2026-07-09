@@ -17,7 +17,7 @@
             </div>
             <div class="card-body">
                 <p><strong>Teams:</strong> {{ $season->teams_count }}</p>
-                <p><strong>Groups:</strong> {{ $season->teams_count === 32 ? 8 : 16 }}</p>
+                <p><strong>Groups:</strong> 8 (A–H) · {{ $season->teams_count / 8 }} teams/group</p>
                 <p><strong>Meta:</strong> <span class="badge bg-secondary">{{ $season->meta }}</span></p>
                 <p><strong>Created:</strong> {{ $season->created_at?->format('Y-m-d') ?? 'N/A' }}</p>
                 

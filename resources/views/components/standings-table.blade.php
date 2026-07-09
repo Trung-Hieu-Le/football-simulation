@@ -33,6 +33,8 @@
                         };
                     } elseif ($highlightTop && $pos <= $highlightTop) {
                         $rowClass = 'table-success';
+                    } elseif (!$division && $highlightTop && $relegationCount && $pos > $highlightTop) {
+                        $rowClass = 'table-danger';
                     } elseif ($promotionCount && $division && $division !== 'division1' && $pos <= $promotionCount) {
                         $rowClass = 'table-success';
                     } elseif ($relegationCount && $division && $division !== 'division3' && $pos > count($standings) - $relegationCount) {

@@ -17,11 +17,26 @@
     </div>
 </div>
 
+@php
+    $teamsPerGroup = $season->teams_count / 8;
+    $qualifyCount = 4;
+@endphp
+
+<p class="text-muted small mb-3">
+    8 groups (A–H) · {{ (int) $teamsPerGroup }} teams/group · Top {{ $qualifyCount }} advance to Round of 16
+    @if($teamsPerGroup > 4)
+        · Ranks 5–{{ (int) $teamsPerGroup }} eliminated
+    @endif
+</p>
+
 @foreach($groups as $group => $standings)
     <x-standings-table
         :title="'Group ' . $group"
         :standings="$standings"
-        :highlight-top="2"
+        :highlight-top="$teamsPerGroup <= 4 ? 4 : $qualifyCount"
+        :promotion-count="0"
+        :relegation-count="$teamsPerGroup > 4 ? $teamsPerGroup - $qualifyCount : 0"
+        :division="null"
     />
 @endforeach
 @endsection

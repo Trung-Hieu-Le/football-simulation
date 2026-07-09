@@ -8,8 +8,8 @@ enum CupSeasonResult: string
     case GROUP_STAGE = 'group_stage';
 
     // Knockout rounds (eliminated at)
-    case ROUND_OF_32 = 'round_of_32';
     case ROUND_OF_16 = 'round_of_16';
+    case ROUND_OF_8 = 'round_of_8';
     case QUARTER_FINAL = 'quarter_finals';
     case SEMI_FINAL = 'semi_finals';
 
@@ -23,8 +23,8 @@ enum CupSeasonResult: string
     {
         return match($this) {
             self::GROUP_STAGE => 'Vòng Bảng',
-            self::ROUND_OF_32 => 'Vòng 1/16',
-            self::ROUND_OF_16 => 'Vòng 1/8',
+            self::ROUND_OF_16 => 'Vòng 1/16',
+            self::ROUND_OF_8 => 'Vòng 1/8',
             self::QUARTER_FINAL => 'Tứ Kết',
             self::SEMI_FINAL => 'Bán Kết',
             self::CHAMPION => 'Vô Địch',
@@ -38,10 +38,10 @@ enum CupSeasonResult: string
     {
         return match($this) {
             self::GROUP_STAGE => 'Group Stage',
-            self::ROUND_OF_32 => 'Round of 32',
             self::ROUND_OF_16 => 'Round of 16',
-            self::QUARTER_FINAL => 'Quarter Final',
-            self::SEMI_FINAL => 'Semi Final',
+            self::ROUND_OF_8 => 'Round of 8',
+            self::QUARTER_FINAL => 'Quarter-finals',
+            self::SEMI_FINAL => 'Semi-finals',
             self::CHAMPION => 'Champion',
             self::RUNNER_UP => 'Runner-up',
             self::THIRD_PLACE => '3rd Place',
@@ -56,7 +56,7 @@ enum CupSeasonResult: string
             self::RUNNER_UP => 'badge-secondary',
             self::THIRD_PLACE, self::FOURTH_PLACE => 'badge-info',
             self::SEMI_FINAL => 'badge-primary',
-            self::QUARTER_FINAL, self::ROUND_OF_16, self::ROUND_OF_32 => 'badge-secondary',
+            self::ROUND_OF_16, self::ROUND_OF_8, self::QUARTER_FINAL => 'badge-secondary',
             self::GROUP_STAGE => 'badge-light',
         };
     }
@@ -91,8 +91,8 @@ enum CupSeasonResult: string
             'third_place' => self::FOURTH_PLACE,
             'semi_finals' => self::SEMI_FINAL,
             'quarter_finals' => self::QUARTER_FINAL,
+            'round_of_8' => self::ROUND_OF_8,
             'round_of_16' => self::ROUND_OF_16,
-            'round_of_32' => self::ROUND_OF_32,
             default => self::GROUP_STAGE,
         };
     }

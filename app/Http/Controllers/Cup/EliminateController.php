@@ -13,46 +13,33 @@ use Illuminate\Http\Request;
 
 class EliminateController extends Controller
 {
-    protected MatchSimulator $matchSimulator;
-    protected PenaltyShootoutService $penaltyService;
-    protected MatchHistoryService $historyService;
-    protected CupKnockoutService $knockoutService;
-
     public function __construct(
-        MatchSimulator $matchSimulator,
-        PenaltyShootoutService $penaltyService,
-        MatchHistoryService $historyService,
-        CupKnockoutService $knockoutService
+        protected MatchSimulator $matchSimulator,
+        protected PenaltyShootoutService $penaltyService,
+        protected MatchHistoryService $historyService,
+        protected CupKnockoutService $knockoutService,
     ) {
-        $this->matchSimulator = $matchSimulator;
-        $this->penaltyService = $penaltyService;
-        $this->historyService = $historyService;
-        $this->knockoutService = $knockoutService;
     }
 
     public function index($seasonId)
     {
         $season = Season::findOrFail($seasonId);
-        
-        $matches = EliminateMatch::where('season_id', $seasonId)
-                                 ->with(['team1', 'team2', 'winner'])
-                                 ->orderByRaw("FIELD(round, 'round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'third_place', 'final')")
-                                 ->orderBy('branch')
-                                 ->get()
-                                 ->groupBy('round');
+        $matches = $this->knockoutService->getBracketGroupedByRound($seasonId);
+        $roundOrder = CupKnockoutService::ROUND_ORDER;
 
-        return view('cup.eliminate.index', compact('season', 'matches'));
+        return view('cup.eliminate.index', compact('season', 'matches', 'roundOrder'));
     }
 
     public function simulateRound($seasonId, $round)
     {
         $season = Season::findOrFail($seasonId);
-        
+
         $matches = EliminateMatch::where('season_id', $seasonId)
-                                 ->where('round', $round)
-                                 ->whereNull('winner_id')
-                                 ->with(['team1', 'team2'])
-                                 ->get();
+            ->where('round', $round)
+            ->whereNull('winner_id')
+            ->orderBy('slot_index')
+            ->with(['team1', 'team2'])
+            ->get();
 
         foreach ($matches as $match) {
             if ($match->team1_id && $match->team2_id) {
@@ -63,7 +50,7 @@ class EliminateController extends Controller
         $this->knockoutService->updateBracket($season, $round);
 
         return redirect()->route('cup.eliminate.index', $seasonId)
-                        ->with('success', ucfirst(str_replace('_', ' ', $round)) . ' simulated successfully!');
+            ->with('success', ucfirst(str_replace('_', ' ', $round)) . ' simulated successfully!');
     }
 
     protected function simulateMatch(EliminateMatch $match, string $seasonMeta): void
@@ -82,9 +69,9 @@ class EliminateController extends Controller
             );
             $winnerId = $penaltyResult['winner'] === 1 ? $match->team1_id : $match->team2_id;
         } else {
-            $winnerId = $result['team1_score'] > $result['team2_score'] 
-                      ? $match->team1_id 
-                      : $match->team2_id;
+            $winnerId = $result['team1_score'] > $result['team2_score']
+                ? $match->team1_id
+                : $match->team2_id;
         }
 
         $match->update([
@@ -115,8 +102,8 @@ class EliminateController extends Controller
     public function show($matchId)
     {
         $match = EliminateMatch::with(['team1', 'team2', 'winner', 'season'])
-                               ->findOrFail($matchId);
-        
+            ->findOrFail($matchId);
+
         return view('cup.eliminate.show', compact('match'));
     }
 }

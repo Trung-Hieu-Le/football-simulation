@@ -7,12 +7,10 @@ use Illuminate\Support\Collection;
 
 class CupPotSeedingService
 {
-    public const POT_COUNT = 4;
+    public const GROUP_COUNT = 8;
 
     /**
-     * Distribute teams into 4 pots based on ELO ranking
-     * @param Collection $teams Collection of Team models
-     * @return array [pot1 => [...], pot2 => [...], pot3 => [...], pot4 => [...]]
+     * @return array<int, Collection<int, Team>> pots keyed 1..N
      */
     public function distributeToPots(Collection $teams): array
     {
@@ -21,68 +19,45 @@ class CupPotSeedingService
             throw new \InvalidArgumentException("Cup mode requires 32 or 64 teams, got {$teamsCount}");
         }
 
+        $teamsPerGroup = (int) ($teamsCount / self::GROUP_COUNT);
         $sortedTeams = $teams->sortByDesc('elo')->values();
-        $teamsPerPot = (int)($teamsCount / self::POT_COUNT);
 
-        $pots = [
-            'pot1' => [],
-            'pot2' => [],
-            'pot3' => [],
-            'pot4' => [],
-        ];
-
-        foreach ($sortedTeams as $index => $team) {
-            $potNumber = (int)floor($index / $teamsPerPot) + 1;
-            $potNumber = min($potNumber, self::POT_COUNT);
-            $pots["pot{$potNumber}"][] = $team;
+        $pots = [];
+        for ($pot = 1; $pot <= $teamsPerGroup; $pot++) {
+            $start = ($pot - 1) * self::GROUP_COUNT;
+            $pots[$pot] = $sortedTeams->slice($start, self::GROUP_COUNT)->values();
         }
 
         return $pots;
     }
 
     /**
-     * Draw teams into groups from pots
-     * @param array $pots [pot1 => [...], pot2 => [...], pot3 => [...], pot4 => [...]]
-     * @param int $groupCount Number of groups (8 for 32 teams, 16 for 64 teams)
-     * @return array [A => [...], B => [...], ...]
+     * Draw teams into groups A–H: each group gets one team from each pot.
+     *
+     * @param array<int, Collection<int, Team>> $pots
+     * @return array<string, Collection<int, Team>> e.g. ['A' => Collection, ...]
      */
-    public function drawGroups(array $pots, int $groupCount): array
+    public function drawGroups(array $pots): array
     {
+        $groupLetters = range('A', chr(65 + self::GROUP_COUNT - 1));
         $groups = [];
-        $groupLetters = range('A', chr(65 + $groupCount - 1));
-
         foreach ($groupLetters as $letter) {
-            $groups[$letter] = [];
+            $groups[$letter] = collect();
         }
 
-        foreach ($pots as $potName => $potTeams) {
-            shuffle($potTeams);
-            
-            foreach ($potTeams as $index => $team) {
-                $groupIndex = $index % $groupCount;
-                $groupLetter = $groupLetters[$groupIndex];
-                $groups[$groupLetter][] = $team;
+        foreach ($pots as $potTeams) {
+            $shuffled = $potTeams->shuffle()->values();
+            foreach ($shuffled as $index => $team) {
+                $groupLetter = $groupLetters[$index];
+                $groups[$groupLetter]->push($team);
             }
         }
 
         return $groups;
     }
 
-    /**
-     * Get top teams from each group for knockout stage
-     * @param array $groupStandings [groupName => [standings sorted by rank]]
-     * @param int $teamsPerGroup Number of teams to advance per group
-     * @return Collection Collection of team IDs
-     */
-    public function getKnockoutTeams(array $groupStandings, int $teamsPerGroup = 2): Collection
+    public function getTeamsPerGroup(int $teamCount): int
     {
-        $qualifiedTeams = collect();
-
-        foreach ($groupStandings as $groupName => $standings) {
-            $topTeams = collect($standings)->take($teamsPerGroup);
-            $qualifiedTeams = $qualifiedTeams->concat($topTeams->pluck('team_id'));
-        }
-
-        return $qualifiedTeams;
+        return (int) ($teamCount / self::GROUP_COUNT);
     }
 }

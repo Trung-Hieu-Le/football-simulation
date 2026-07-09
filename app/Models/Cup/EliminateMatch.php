@@ -13,6 +13,7 @@ class EliminateMatch extends Model
         'season_id',
         'round',
         'branch',
+        'slot_index',
         'team1_id',
         'team2_id',
         'team1_score',

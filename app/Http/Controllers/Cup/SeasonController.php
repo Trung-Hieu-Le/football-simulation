@@ -13,19 +13,20 @@ use App\Models\Team;
 use App\Enums\SeasonMeta;
 use App\Services\CupPotSeedingService;
 use App\Services\CupKnockoutService;
+use App\Services\CupGroupStageService;
+use App\Services\RoundRobinService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SeasonController extends Controller
 {
-    protected CupPotSeedingService $potSeedingService;
-    protected CupKnockoutService $knockoutService;
-
-    public function __construct(CupPotSeedingService $potSeedingService, CupKnockoutService $knockoutService)
-    {
-        $this->potSeedingService = $potSeedingService;
-        $this->knockoutService = $knockoutService;
+    public function __construct(
+        protected CupPotSeedingService $potSeedingService,
+        protected CupKnockoutService $knockoutService,
+        protected CupGroupStageService $groupStageService,
+        protected RoundRobinService $roundRobinService,
+    ) {
     }
 
     public function index()
@@ -70,11 +71,15 @@ class SeasonController extends Controller
                     'meta' => $meta,
                 ]);
 
-                $selectedTeams = Team::whereIn('id', $validated['selected_teams'])->get();
+                $selectedTeams = Team::whereIn('id', $validated['selected_teams'])
+                    ->orderByDesc('elo')
+                    ->get();
+
                 $this->distributeToGroups($season, $selectedTeams);
+                $season->load('groupTeams');
                 $this->generateGroupStageMatches($season);
                 $this->createStandings($season);
-                $this->knockoutService->createKnockoutBracket($season, $validated['teams_count']);
+                $this->knockoutService->createKnockoutBracket($season);
 
                 return $season;
             });
@@ -90,7 +95,7 @@ class SeasonController extends Controller
     public function show($id)
     {
         $season = Season::with(['groupTeams', 'standings.team'])->findOrFail($id);
-        $groups = $this->getGroupStandings($season);
+        $groups = $this->groupStageService->getGroupStandings($season);
 
         return view('cup.seasons.show', compact('season', 'groups'));
     }
@@ -115,41 +120,34 @@ class SeasonController extends Controller
         }
     }
 
-    protected function distributeToGroups(Season $season, $teams)
+    protected function distributeToGroups(Season $season, $teams): void
     {
-        $groupCount = $season->teams_count === 32 ? 8 : 16;
-
         $pots = $this->potSeedingService->distributeToPots($teams);
-        $groups = $this->potSeedingService->drawGroups($pots, $groupCount);
+        $groups = $this->potSeedingService->drawGroups($pots);
 
         foreach ($groups as $groupLetter => $groupTeams) {
             $groupTeam = new GroupTeam([
                 'season_id' => $season->id,
                 'group' => $groupLetter,
             ]);
-            $teamIds = collect($groupTeams)->pluck('id')->toArray();
+            $teamIds = $groupTeams->pluck('id')->toArray();
             $groupTeam->setTeamIdsArray($teamIds);
             $groupTeam->save();
         }
     }
 
-    protected function generateGroupStageMatches(Season $season)
+    protected function generateGroupStageMatches(Season $season): void
     {
-        $groupTeams = $season->groupTeams;
-
-        foreach ($groupTeams as $groupTeam) {
+        foreach ($season->groupTeams as $groupTeam) {
             $teamIds = $groupTeam->getTeamIdsArray();
-            $teamsCount = count($teamIds);
-            $rounds = ($teamsCount - 1) * 2;
+            $rounds = $this->roundRobinService->generateSingleRoundRobin($teamIds);
 
-            for ($round = 1; $round <= $rounds; $round++) {
-                $matches = $this->generateRoundMatches($teamIds, $round);
-
+            foreach ($rounds as $roundNumber => $matches) {
                 foreach ($matches as $match) {
                     GroupStageMatch::create([
                         'season_id' => $season->id,
                         'group' => $groupTeam->group,
-                        'round' => $round,
+                        'round' => $roundNumber,
                         'team1_id' => $match[0],
                         'team2_id' => $match[1],
                     ]);
@@ -158,50 +156,10 @@ class SeasonController extends Controller
         }
     }
 
-    protected function generateRoundMatches(array $teams, int $round): array
+    protected function createStandings(Season $season): void
     {
-        $count = count($teams);
-        $half = $count / 2;
-        $matches = [];
-
-        if ($count % 2 !== 0) {
-            $teams[] = null;
-            $count++;
-        }
-
-        $roundIndex = ($round - 1) % ($count - 1);
-
-        for ($i = 0; $i < $half; $i++) {
-            $home = ($roundIndex + $i) % ($count - 1);
-            $away = ($count - 1 - $i + $roundIndex) % ($count - 1);
-
-            if ($i == 0) {
-                $away = $count - 1;
-            }
-
-            $homeTeam = $teams[$home];
-            $awayTeam = $teams[$away];
-
-            if ($homeTeam !== null && $awayTeam !== null) {
-                if ($round > ($count - 1)) {
-                    $matches[] = [$awayTeam, $homeTeam];
-                } else {
-                    $matches[] = [$homeTeam, $awayTeam];
-                }
-            }
-        }
-
-        return $matches;
-    }
-
-    protected function createStandings(Season $season)
-    {
-        $groupTeams = $season->groupTeams;
-
-        foreach ($groupTeams as $groupTeam) {
-            $teamIds = $groupTeam->getTeamIdsArray();
-
-            foreach ($teamIds as $teamId) {
+        foreach ($season->groupTeams as $groupTeam) {
+            foreach ($groupTeam->getTeamIdsArray() as $teamId) {
                 Standing::create([
                     'team_id' => $teamId,
                     'season_id' => $season->id,
@@ -211,63 +169,14 @@ class SeasonController extends Controller
         }
     }
 
-    protected function getGroupStandings(Season $season): array
-    {
-        $standings = $season->standings()
-            ->with(['team', 'position'])
-            ->get()
-            ->groupBy('group');
-
-        $groups = [];
-        foreach ($standings as $group => $groupStandings) {
-            $sorted = $groupStandings->sortByDesc(function ($standing) {
-                return [
-                    $standing->points,
-                    $standing->goal_difference,
-                    $standing->goal_scored,
-                ];
-            })->values();
-
-            $groups[$group] = $sorted;
-        }
-
-        return $groups;
-    }
-
     public function advanceToKnockout($id)
     {
         try {
             $season = Season::findOrFail($id);
-            $groups = $this->getGroupStandings($season);
+            $this->groupStageService->syncGroupPositions($season);
+            $groupStandingsArray = $this->groupStageService->getGroupStandingsForKnockout($season);
 
-            $groupStandingsArray = [];
-            foreach ($groups as $groupName => $standings) {
-                $groupStandingsArray[$groupName] = $standings->map(function ($standing) {
-                    return [
-                        'team_id' => $standing->team_id,
-                        'points' => $standing->points,
-                    ];
-                })->toArray();
-            }
-
-            $matches = $this->knockoutService->generateRoundOf16($season, $groupStandingsArray);
-
-            $existing = \App\Models\Cup\EliminateMatch::where('season_id', $season->id)
-                ->where('round', 'round_of_16')
-                ->orderBy('branch')
-                ->orderBy('id')
-                ->get();
-
-            foreach ($matches->values() as $i => $match) {
-                if (isset($existing[$i])) {
-                    $existing[$i]->update([
-                        'team1_id' => $match->team1_id,
-                        'team2_id' => $match->team2_id,
-                    ]);
-                } else {
-                    $match->save();
-                }
-            }
+            $this->knockoutService->populateRoundOf16($season, $groupStandingsArray);
 
             return redirect()->route('cup.eliminate.index', $id)
                 ->with('success', 'Knockout stage initialized!');

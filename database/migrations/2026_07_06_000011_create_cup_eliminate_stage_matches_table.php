@@ -13,6 +13,7 @@ return new class extends Migration
             $table->integer('season_id');
             $table->string('round', 45)->nullable();
             $table->string('branch', 45)->nullable();
+            $table->unsignedSmallInteger('slot_index')->default(0);
             $table->integer('team1_id')->nullable();
             $table->integer('team2_id')->nullable();
             $table->tinyInteger('team1_score')->nullable();
@@ -25,6 +26,7 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index('season_id');
+            $table->index(['season_id', 'round', 'slot_index']);
             $table->index('winner_id');
         });
     }
