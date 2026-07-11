@@ -17,6 +17,10 @@ class MatchSimulator extends BaseSimulationService
     public function simulateMatch($team1, $team2, string $seasonMeta, bool $requireWinner = false): array
     {
         $matchData = [
+            'team1_id' => $team1->id,
+            'team2_id' => $team2->id,
+            'team1_name' => $team1->name,
+            'team2_name' => $team2->name,
             'team1_score' => 0,
             'team2_score' => 0,
             'team1_fouls' => 0,
@@ -27,6 +31,7 @@ class MatchSimulator extends BaseSimulationService
             'team2_shots' => 0,
             'team1_shots_on_target' => 0,
             'team2_shots_on_target' => 0,
+            'goals' => [],
             'specialEvents' => [],
         ];
 

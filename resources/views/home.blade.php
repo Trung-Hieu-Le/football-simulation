@@ -14,7 +14,8 @@
             <div class="card-body">
                 @if($latestLeague)
                     <p><strong>Season:</strong> {{ $latestLeague->season }} | <strong>Teams:</strong> {{ $latestLeague->teams_count }} | <strong>Meta:</strong> {{ $latestLeague->meta }}</p>
-                    <a href="{{ route('league.seasons.show', $latestLeague->id) }}" class="btn btn-primary">View Season</a>
+                    <x-champion-line :champion="$leagueChampion" />
+                    <a href="{{ route('league.seasons.show', $latestLeague->id) }}" class="btn btn-primary mt-2">View Season</a>
                 @else
                     <p class="text-muted">No league season yet.</p>
                 @endif
@@ -28,7 +29,8 @@
             <div class="card-body">
                 @if($latestCup)
                     <p><strong>Season:</strong> {{ $latestCup->season }} | <strong>Teams:</strong> {{ $latestCup->teams_count }} | <strong>Meta:</strong> {{ $latestCup->meta }}</p>
-                    <a href="{{ route('cup.seasons.show', $latestCup->id) }}" class="btn btn-success">View Season</a>
+                    <x-champion-line :champion="$cupChampion" />
+                    <a href="{{ route('cup.seasons.show', $latestCup->id) }}" class="btn btn-success mt-2">View Season</a>
                 @else
                     <p class="text-muted">No cup season yet.</p>
                 @endif

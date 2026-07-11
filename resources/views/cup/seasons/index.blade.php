@@ -20,7 +20,7 @@
                 <p><strong>Groups:</strong> 8 (A–H) · {{ $season->teams_count / 8 }} teams/group</p>
                 <p><strong>Meta:</strong> <span class="badge bg-secondary">{{ $season->meta }}</span></p>
                 <p><strong>Created:</strong> {{ $season->created_at?->format('Y-m-d') ?? 'N/A' }}</p>
-                
+                <x-champion-line :champion="$champions->get($season->id)" />
                 <div class="d-flex gap-2 flex-wrap">
                     <a href="{{ route('cup.seasons.show', $season->id) }}" class="btn btn-success btn-sm">Groups</a>
                     <a href="{{ route('cup.matches.index', $season->id) }}" class="btn btn-info btn-sm">Matches</a>

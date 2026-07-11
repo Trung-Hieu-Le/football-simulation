@@ -2,13 +2,16 @@
 
 namespace App\Models\Cup;
 
+use App\Models\Concerns\HasMatchEvents;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Team;
 
 class GroupStageMatch extends Model
 {
+    use HasMatchEvents;
+
     protected $table = 'cup_group_stage_matches';
-    
+
     protected $fillable = [
         'season_id',
         'group',
@@ -21,6 +24,11 @@ class GroupStageMatch extends Model
         'team2_possession',
         'team1_foul',
         'team2_foul',
+        'match_events',
+    ];
+
+    protected $casts = [
+        'match_events' => 'array',
     ];
 
     protected $attributes = [

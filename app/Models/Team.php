@@ -8,6 +8,8 @@ class Team extends Model
 {
     protected $table = 'teams';
 
+    protected $appends = ['total_stats'];
+
     protected $fillable = [
         'name',
         'color_1',
@@ -24,7 +26,7 @@ class Team extends Model
         'stamina',
         'goalkeeping',
         'elo',
-        'region',
+        'region_id',
         'shirt_type',
     ];
 
@@ -46,7 +48,21 @@ class Team extends Model
 
     public function region()
     {
-        return $this->belongsTo(Region::class, 'region', 'id');
+        return $this->belongsTo(Region::class, 'region_id');
+    }
+
+    public function getTotalStatsAttribute(): int
+    {
+        $stats = ['attack', 'defense', 'control', 'creative', 'pace', 'mental', 'discipline', 'luck', 'stamina', 'goalkeeping'];
+
+        return collect($stats)->sum(function ($stat) {
+            return (int) ($this->attributes[$stat] ?? $this->{$stat} ?? 0);
+        });
+    }
+
+    public function setTotalStatsAttribute($value): void
+    {
+        $this->attributes['total_stats'] = (int) $value;
     }
 
     public function updateElo(int $change): void

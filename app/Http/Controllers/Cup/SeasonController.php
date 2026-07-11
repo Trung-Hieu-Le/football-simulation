@@ -15,6 +15,7 @@ use App\Services\CupPotSeedingService;
 use App\Services\CupKnockoutService;
 use App\Services\CupGroupStageService;
 use App\Services\RoundRobinService;
+use App\Services\StatisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,13 +27,18 @@ class SeasonController extends Controller
         protected CupKnockoutService $knockoutService,
         protected CupGroupStageService $groupStageService,
         protected RoundRobinService $roundRobinService,
+        protected StatisticsService $statisticsService,
     ) {
     }
 
     public function index()
     {
         $seasons = Season::orderBy('season', 'desc')->get();
-        return view('cup.seasons.index', compact('seasons'));
+        $champions = $this->statisticsService->getCupChampionsForSeasonIds(
+            $seasons->pluck('id')->all()
+        );
+
+        return view('cup.seasons.index', compact('seasons', 'champions'));
     }
 
     public function create()

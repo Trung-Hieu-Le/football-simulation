@@ -7,6 +7,7 @@ use App\Models\Cup\Season;
 use App\Models\Cup\GroupStageMatch;
 use App\Services\Simulation\MatchSimulator;
 use App\Services\MatchHistoryService;
+use App\Services\MatchEventNormalizer;
 use App\Services\CupGroupStageService;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class MatchController extends Controller
         protected MatchSimulator $matchSimulator,
         protected MatchHistoryService $historyService,
         protected CupGroupStageService $groupStageService,
+        protected MatchEventNormalizer $eventNormalizer,
     ) {
     }
 
@@ -83,6 +85,8 @@ class MatchController extends Controller
             false
         );
 
+        $matchEvents = $this->eventNormalizer->buildFromSimulation($result);
+
         $match->update([
             'team1_score' => $result['team1_score'],
             'team2_score' => $result['team2_score'],
@@ -90,6 +94,7 @@ class MatchController extends Controller
             'team2_possession' => $result['team2_possession'],
             'team1_foul' => $result['team1_fouls'],
             'team2_foul' => $result['team2_fouls'],
+            'match_events' => $matchEvents,
         ]);
 
         $this->historyService->updateCupGroupStageHistory(

@@ -12,6 +12,7 @@
                     <th>Pts</th>
                     <th>GF</th>
                     <th>GA</th>
+                    <th>GD</th>
                 </tr>
             </thead>
             <tbody>
@@ -23,6 +24,7 @@
                     <td>{{ $c->points }}</td>
                     <td>{{ $c->goal_scored }}</td>
                     <td>{{ $c->goal_conceded }}</td>
+                    <td>{{ $c->goal_scored - $c->goal_conceded }}</td>
                 </tr>
                 @empty
                 <tr>

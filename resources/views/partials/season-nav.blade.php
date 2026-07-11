@@ -20,14 +20,14 @@
         <a class="nav-link {{ request()->routeIs($mode.'.matches.*') ? 'active' : '' }}"
            href="{{ route($mode.'.matches.index', $season->id) }}">Matches</a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs($mode.'.statistics.index') ? 'active' : '' }}"
-           href="{{ route($mode.'.statistics.index', $season->id) }}">Statistics</a>
-    </li>
     @if($mode === 'cup')
     <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('cup.eliminate.*') ? 'active' : '' }}"
            href="{{ route('cup.eliminate.index', $season->id) }}">Knockout</a>
     </li>
     @endif
+    <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs($mode.'.statistics.index') ? 'active' : '' }}"
+           href="{{ route($mode.'.statistics.index', $season->id) }}">Statistics</a>
+    </li>
 </ul>

@@ -1,6 +1,12 @@
 @props(['team'])
 @if($team)
-<span class="team-badge" style="background: linear-gradient(135deg, {{ $team->color_1 ?? '#333' }}, {{ $team->color_2 ?? '#666' }}); padding: 2px 8px; border-radius: 4px; color: #fff; white-space: nowrap; border: 1px solid #ccc; text-shadow: 1px 1px 2px rgba(0,0,0);">
+<!-- color is color_3 -->
+<span class="team-badge" style="background: linear-gradient(135deg, {{ $team->color_1 ?? '#333' }}, {{ $team->color_2 ?? '#000' }});
+    color: {{ $team->color_3 ?? '#fff' }}; white-space: nowrap; border: 1px solid #ccc;
+    padding: 2px 8px; border-radius: 4px;
+    width: 80px; display: inline-block;
+    text-shadow: 1px 1px 2px rgba(0,0,0);"
+>
     {{ $team->name }}
 </span>
 @else

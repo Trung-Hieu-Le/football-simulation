@@ -8,18 +8,28 @@ use App\Models\League\LeagueMatch;
 use App\Models\Team;
 use App\Services\Simulation\MatchSimulator;
 use App\Services\MatchHistoryService;
+use App\Services\MatchEventNormalizer;
+use App\Services\LeagueSeasonResultService;
 use Illuminate\Http\Request;
 
 class MatchController extends Controller
 {
-    protected MatchSimulator $matchSimulator;
-    protected MatchHistoryService $historyService;
-
-    public function __construct(MatchSimulator $matchSimulator, MatchHistoryService $historyService)
-    {
+    public function __construct(
+        MatchSimulator $matchSimulator,
+        MatchHistoryService $historyService,
+        MatchEventNormalizer $eventNormalizer,
+        LeagueSeasonResultService $resultService,
+    ) {
         $this->matchSimulator = $matchSimulator;
         $this->historyService = $historyService;
+        $this->eventNormalizer = $eventNormalizer;
+        $this->resultService = $resultService;
     }
+
+    protected MatchSimulator $matchSimulator;
+    protected MatchHistoryService $historyService;
+    protected MatchEventNormalizer $eventNormalizer;
+    protected LeagueSeasonResultService $resultService;
 
     public function index($seasonId)
     {
@@ -48,6 +58,8 @@ class MatchController extends Controller
             $this->simulateMatch($match, $season->meta);
         }
 
+        $this->resultService->calculateSeasonResults($season);
+
         return redirect()->route('league.matches.index', $seasonId)
                         ->with('success', "Round {$round} simulated successfully!");
     }
@@ -65,6 +77,8 @@ class MatchController extends Controller
             $this->simulateMatch($match, $season->meta);
         }
 
+        $this->resultService->calculateSeasonResults($season);
+
         return redirect()->route('league.seasons.show', $seasonId)
                         ->with('success', 'All matches simulated successfully!');
     }
@@ -78,6 +92,8 @@ class MatchController extends Controller
             false
         );
 
+        $matchEvents = $this->eventNormalizer->buildFromSimulation($result);
+
         $match->update([
             'team1_score' => $result['team1_score'],
             'team2_score' => $result['team2_score'],
@@ -85,6 +101,7 @@ class MatchController extends Controller
             'team2_possession' => $result['team2_possession'],
             'team1_foul' => $result['team1_fouls'],
             'team2_foul' => $result['team2_fouls'],
+            'match_events' => $matchEvents,
         ]);
 
         $this->historyService->updateLeagueMatchHistory(

@@ -7,7 +7,7 @@
 
 <div class="row">
     <div class="col-lg-8">
-        <x-champions-table title="🏆 League Champions" :champions="$leagueChampions" :show-division="true" />
+        <x-champions-table title="🏆 League Champions (Division 1)" :champions="$leagueChampions" :show-division="false" />
         <x-champions-table title="🏅 Cup Champions" :champions="$cupChampions" />
     </div>
     <div class="col-lg-4">

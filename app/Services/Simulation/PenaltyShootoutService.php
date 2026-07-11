@@ -8,32 +8,59 @@ class PenaltyShootoutService extends BaseSimulationService
     {
         $team1Score = 0;
         $team2Score = 0;
+        $kicks = [];
 
         for ($round = 1; $round <= 5; $round++) {
             $remainingShots = 6 - $round;
+            $phase = 'initial';
 
-            $team2Score += $this->takePenaltyShot($team2, $team1);
-            
+            $team2Scored = $this->takePenaltyShot($team2, $team1);
+            $kicks[] = $this->makeKick($round, $phase, $team2->id, $team2Scored);
+            $team2Score += $team2Scored;
+
             if (abs($team1Score - $team2Score) > $remainingShots) {
                 break;
             }
 
-            $team1Score += $this->takePenaltyShot($team1, $team2);
-            
+            $team1Scored = $this->takePenaltyShot($team1, $team2);
+            $kicks[] = $this->makeKick($round, $phase, $team1->id, $team1Scored);
+            $team1Score += $team1Scored;
+
             if (abs($team1Score - $team2Score) > ($remainingShots - 1)) {
                 break;
             }
         }
 
+        $round = 6;
         while ($team1Score === $team2Score) {
-            $team2Score += $this->takePenaltyShot($team2, $team1);
-            $team1Score += $this->takePenaltyShot($team1, $team2);
+            $phase = 'sudden_death';
+
+            $team2Scored = $this->takePenaltyShot($team2, $team1);
+            $kicks[] = $this->makeKick($round, $phase, $team2->id, $team2Scored);
+            $team2Score += $team2Scored;
+
+            $team1Scored = $this->takePenaltyShot($team1, $team2);
+            $kicks[] = $this->makeKick($round, $phase, $team1->id, $team1Scored);
+            $team1Score += $team1Scored;
+
+            $round++;
         }
 
         return [
             'team1_penalty_score' => $team1Score,
             'team2_penalty_score' => $team2Score,
             'winner' => $team1Score > $team2Score ? 1 : 2,
+            'kicks' => $kicks,
+        ];
+    }
+
+    protected function makeKick(int $round, string $phase, int $teamId, int $scored): array
+    {
+        return [
+            'round' => $round,
+            'phase' => $phase,
+            'team_id' => $teamId,
+            'scored' => (bool) $scored,
         ];
     }
 

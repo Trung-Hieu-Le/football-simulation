@@ -9,19 +9,29 @@ use App\Models\League\LeagueMatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\League\Standing;
-use App\Models\League\Position;
 use App\Models\Team;
 use App\Enums\SeasonMeta;
 use App\Enums\DivisionLevel;
-use App\Enums\LeagueSeasonResult;
+use App\Services\LeagueSeasonResultService;
+use App\Services\StatisticsService;
 use Illuminate\Http\Request;
 
 class SeasonController extends Controller
 {
+    public function __construct(
+        protected LeagueSeasonResultService $resultService,
+        protected StatisticsService $statisticsService,
+    ) {
+    }
+
     public function index()
     {
         $seasons = Season::orderBy('season', 'desc')->get();
-        return view('league.seasons.index', compact('seasons'));
+        $champions = $this->statisticsService->getLeagueChampionsForSeasonIds(
+            $seasons->pluck('id')->all()
+        );
+
+        return view('league.seasons.index', compact('seasons', 'champions'));
     }
 
     public function create()
@@ -235,58 +245,9 @@ class SeasonController extends Controller
     public function calculateResults($id)
     {
         $season = Season::findOrFail($id);
-        
-        $groupTeams = $season->groupTeams;
-        foreach ($groupTeams as $groupTeam) {
-            $this->calculateDivisionResults($season, $groupTeam->group);
-        }
+        $this->resultService->calculateSeasonResults($season);
 
         return redirect()->route('league.seasons.show', $id)
                         ->with('success', 'Season results calculated!');
-    }
-
-    protected function calculateDivisionResults(Season $season, string $division)
-    {
-        $standings = Standing::where('season_id', $season->id)
-                            ->where('division', $division)
-                            ->orderByDesc('points')
-                            ->orderByDesc('goal_difference')
-                            ->orderByDesc('goal_scored')
-                            ->get();
-
-        $teamsCount = $standings->count();
-        $promotionCount = (int)ceil($teamsCount * 0.25);
-        $relegationCount = (int)ceil($teamsCount * 0.25);
-
-        foreach ($standings as $index => $standing) {
-            $position = $index + 1;
-            $result = $this->determineResult($position, $teamsCount, $promotionCount, $relegationCount, $division);
-
-            Position::updateOrCreate(
-                ['league_standing_id' => $standing->id],
-                [
-                    'season_id' => $season->id,
-                    'position' => $position,
-                    'result' => $result,
-                ]
-            );
-        }
-    }
-
-    protected function determineResult(int $position, int $teamsCount, int $promotionCount, int $relegationCount, string $division): string
-    {
-        if ($position === 1) {
-            return LeagueSeasonResult::CHAMPION->value;
-        }
-
-        if ($division !== DivisionLevel::DIVISION1->value && $position <= $promotionCount) {
-            return LeagueSeasonResult::PROMOTED->value;
-        }
-
-        if ($division !== DivisionLevel::DIVISION3->value && $position > ($teamsCount - $relegationCount)) {
-            return LeagueSeasonResult::RELEGATED->value;
-        }
-
-        return LeagueSeasonResult::STAY->value;
     }
 }

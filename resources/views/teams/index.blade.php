@@ -16,15 +16,18 @@
 
 <div class="card">
     <div class="card-body table-responsive">
-        <table class="table table-hover align-middle">
+        <table class="table table-hover align-middle table-sort table-arrows">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
                     <th>Region</th>
                     <th>ELO</th>
-                    <th>Stats</th>
-                    <th>Actions</th>
+                    <th>ATK</th>
+                    <th>DEF</th>
+                    <th>CTL</th>
+                    <th>Total</th>
+                    <th class="disable-sort">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,9 +35,12 @@
                 <tr>
                     <td>{{ $team->id }}</td>
                     <td>@include('partials.team-badge', ['team' => $team])</td>
-                    <td>{{ $team->region->name ?? 'N/A' }}</td>
+                    <td>{{ $team->region?->name ?? 'N/A' }}</td>
                     <td><strong>{{ $team->elo }}</strong></td>
-                    <td><small>ATK {{ $team->attack }} | DEF {{ $team->defense }} | CTL {{ $team->control }}</small></td>
+                    <td>{{ $team->attack }}</td>
+                    <td>{{ $team->defense }}</td>
+                    <td>{{ $team->control }}</td>
+                    <td><strong>{{ $team->total_stats }}</strong></td>
                     <td>
                         <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#teamEditModal{{ $team->id }}">Edit</button>
                         <form action="{{ route('teams.destroy', $team->id) }}" method="POST" class="d-inline">
@@ -49,7 +55,6 @@
     </div>
 </div>
 
-{{-- Create Modal --}}
 <div class="modal fade" id="teamCreateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <form action="{{ route('teams.store') }}" method="POST" class="modal-content">
@@ -64,14 +69,20 @@
     </div>
 </div>
 
-{{-- Edit Modals --}}
 @foreach($teams as $team)
 <div class="modal fade" id="teamEditModal{{ $team->id }}" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <form action="{{ route('teams.update', $team->id) }}" method="POST" class="modal-content">
+    <div class="modal-dialog modal-xl">
+        <form action="{{ route('teams.update', $team->id) }}" method="POST" class="modal-content team-edit-form">
             @csrf @method('PUT')
             <div class="modal-header"><h5 class="modal-title">Edit {{ $team->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">@include('teams._form', ['team' => $team, 'regions' => $regions])</div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-lg-7">@include('teams._form', ['team' => $team, 'regions' => $regions])</div>
+                    <div class="col-lg-5 d-flex align-items-center justify-content-center">
+                        <canvas id="radar-{{ $team->id }}" width="320" height="320" aria-label="Team stats radar chart"></canvas>
+                    </div>
+                </div>
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-warning">Save</button>
@@ -87,3 +98,39 @@
 @endpush
 @endif
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/table-sort-js/table-sort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ asset('js/radar-chart.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const syncTeamTotals = () => {
+        document.querySelectorAll('.team-stats-wrapper').forEach((wrapper) => {
+            const inputs = wrapper.querySelectorAll('.team-stat-input');
+            let total = 0;
+
+            inputs.forEach((input) => {
+                const value = parseInt(input.value, 10);
+                if (!Number.isNaN(value)) {
+                    total += value;
+                }
+            });
+
+            const totalInput = wrapper.querySelector('.team-total-stats');
+            if (totalInput) {
+                totalInput.value = total;
+            }
+        });
+    };
+
+    document.addEventListener('input', (event) => {
+        if (event.target.classList.contains('team-stat-input')) {
+            syncTeamTotals();
+        }
+    });
+
+    syncTeamTotals();
+});
+</script>
+@endpush

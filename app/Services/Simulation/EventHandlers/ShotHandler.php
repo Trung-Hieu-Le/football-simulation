@@ -187,9 +187,21 @@ class ShotHandler extends BaseSimulationService
         $scoreKey = $team == 1 ? 'team1_score' : 'team2_score';
         $matchData[$scoreKey]++;
 
+        $teamId = $team == 1 ? $matchData['team1_id'] : $matchData['team2_id'];
+        $teamName = $team == 1 ? $matchData['team1_name'] : $matchData['team2_name'];
+        $type = $isPenalty ? 'penalty' : ($isFreeKick ? 'freekick' : 'goal');
+        $suffix = $isPenalty ? ' (P)' : ($isFreeKick ? ' (F)' : '');
+
+        $matchData['goals'][] = [
+            'minute' => $time,
+            'team_id' => $teamId,
+            'type' => $type,
+            'label' => "{$time}' {$teamName}{$suffix}",
+        ];
+
         $eventType = $isPenalty ? 'Penalty GOAL' : ($isFreeKick ? 'Free Kick GOAL' : 'GOAL');
-        $teamName = $team == 1 ? 'Team1' : 'Team2';
-        $matchData['specialEvents'][] = "{$time}': {$eventType} by {$teamName}!";
+        $teamLabel = $team == 1 ? 'Team1' : 'Team2';
+        $matchData['specialEvents'][] = "{$time}': {$eventType} by {$teamLabel}!";
     }
 
     protected function counterAttack(int $fieldPosition, int $currentTeam, array $defendingStats): array

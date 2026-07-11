@@ -8,6 +8,7 @@ use App\Models\Cup\EliminateMatch;
 use App\Services\Simulation\MatchSimulator;
 use App\Services\Simulation\PenaltyShootoutService;
 use App\Services\MatchHistoryService;
+use App\Services\MatchEventNormalizer;
 use App\Services\CupKnockoutService;
 use Illuminate\Http\Request;
 
@@ -18,6 +19,7 @@ class EliminateController extends Controller
         protected PenaltyShootoutService $penaltyService,
         protected MatchHistoryService $historyService,
         protected CupKnockoutService $knockoutService,
+        protected MatchEventNormalizer $eventNormalizer,
     ) {
     }
 
@@ -62,17 +64,26 @@ class EliminateController extends Controller
             true
         );
 
+        $penaltyShootout = null;
+
         if ($result['team1_score'] === $result['team2_score']) {
             $penaltyResult = $this->penaltyService->simulatePenaltyShootout(
                 $match->team1,
                 $match->team2
             );
             $winnerId = $penaltyResult['winner'] === 1 ? $match->team1_id : $match->team2_id;
+            $penaltyShootout = $this->eventNormalizer->buildPenaltyShootout(
+                $match->team1_id,
+                $match->team2_id,
+                $penaltyResult
+            );
         } else {
             $winnerId = $result['team1_score'] > $result['team2_score']
                 ? $match->team1_id
                 : $match->team2_id;
         }
+
+        $matchEvents = $this->eventNormalizer->buildFromSimulation($result, $penaltyShootout);
 
         $match->update([
             'team1_score' => $result['team1_score'],
@@ -82,6 +93,7 @@ class EliminateController extends Controller
             'team1_foul' => $result['team1_fouls'],
             'team2_foul' => $result['team2_fouls'],
             'winner_id' => $winnerId,
+            'match_events' => $matchEvents,
         ]);
 
         $this->historyService->updateCupEliminateHistory(

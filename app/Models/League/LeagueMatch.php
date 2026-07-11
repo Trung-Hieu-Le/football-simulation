@@ -2,11 +2,14 @@
 
 namespace App\Models\League;
 
+use App\Models\Concerns\HasMatchEvents;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Team;
 
 class LeagueMatch extends Model
 {
+    use HasMatchEvents;
+
     protected $table = 'league_matches';
 
     protected $fillable = [
@@ -21,6 +24,11 @@ class LeagueMatch extends Model
         'team2_possession',
         'team1_foul',
         'team2_foul',
+        'match_events',
+    ];
+
+    protected $casts = [
+        'match_events' => 'array',
     ];
 
     protected $attributes = [

@@ -16,3 +16,7 @@
     <x-bracket-tree :matches="$matches" :season="$season" :round-order="$roundOrder" />
 @endif
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/match-popover.js') }}"></script>
+@endpush

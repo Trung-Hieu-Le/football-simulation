@@ -19,6 +19,6 @@ class Region extends Model
 
     public function teams()
     {
-        return $this->hasMany(Team::class, 'region', 'id');
+        return $this->hasMany(Team::class, 'region_id');
     }
 }

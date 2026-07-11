@@ -18,7 +18,7 @@ class TeamController extends Controller
 
     public function index()
     {
-        $teams = Team::with('region')->orderBy('name')->get();
+        $teams = Team::with('region')->orderBy('id')->get();
         $regions = Region::all();
 
         return view('teams.index', compact('teams', 'regions'));
@@ -60,9 +60,9 @@ class TeamController extends Controller
 
     protected function validateTeam(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'region' => 'required|integer|exists:regions,id',
+            'region_id' => 'required|integer|exists:regions,id',
             'color_1' => 'nullable|string|max:10',
             'color_2' => 'nullable|string|max:10',
             'color_3' => 'nullable|string|max:10',
@@ -78,5 +78,7 @@ class TeamController extends Controller
             'stamina' => 'integer|min:1|max:100',
             'goalkeeping' => 'integer|min:1|max:100',
         ]);
+
+        return $validated;
     }
 }

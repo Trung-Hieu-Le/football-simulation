@@ -20,6 +20,7 @@
                 <p><strong>Divisions:</strong> 3 ({{ $season->teams_count / 3 }} teams each)</p>
                 <p><strong>Meta:</strong> <span class="badge bg-secondary">{{ $season->meta }}</span></p>
                 <p><strong>Created:</strong> {{ $season->created_at?->format('Y-m-d') ?? 'N/A' }}</p>
+                <x-champion-line :champion="$champions->get($season->id)" />
                 
                 <div class="d-flex gap-2">
                     <a href="{{ route('league.seasons.show', $season->id) }}" class="btn btn-success btn-sm">View</a>

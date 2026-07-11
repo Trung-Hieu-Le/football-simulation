@@ -2,13 +2,16 @@
 
 namespace App\Models\Cup;
 
+use App\Models\Concerns\HasMatchEvents;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Team;
 
 class EliminateMatch extends Model
 {
+    use HasMatchEvents;
+
     protected $table = 'cup_eliminate_stage_matches';
-    
+
     protected $fillable = [
         'season_id',
         'round',
@@ -23,6 +26,11 @@ class EliminateMatch extends Model
         'team1_foul',
         'team2_foul',
         'winner_id',
+        'match_events',
+    ];
+
+    protected $casts = [
+        'match_events' => 'array',
     ];
 
     protected $attributes = [
@@ -62,7 +70,7 @@ class EliminateMatch extends Model
         if (!$this->isPlayed()) {
             return null;
         }
-        
+
         return $this->winner_id === $this->team1_id ? $this->team2_id : $this->team1_id;
     }
 }

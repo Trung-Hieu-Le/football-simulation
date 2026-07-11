@@ -19,3 +19,7 @@
 @endforeach
 @endforeach
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/match-popover.js') }}"></script>
+@endpush

@@ -2,20 +2,16 @@
 
 <div class="bracket-match {{ $compact ? 'bracket-match--compact' : '' }}">
     <div class="bracket-match__team {{ $match->winner_id === $match->team1_id ? 'bracket-match__team--winner' : '' }}">
-        @include('partials.team-badge', ['team' => $match->team1])
+        {{ $match->team1->name ?? 'TBD' }}
     </div>
-    <div class="bracket-match__score">
-        @if($showUrl && $match->isPlayed())
-            <a href="{{ $showUrl }}" class="text-decoration-none text-dark">
-                <strong>{{ $match->team1_score ?? '-' }} : {{ $match->team2_score ?? '-' }}</strong>
-            </a>
-        @elseif($match->team1_id && $match->team2_id)
-            <strong>{{ $match->team1_score ?? '-' }} : {{ $match->team2_score ?? '-' }}</strong>
+    <div class="bracket-match__score text-center">
+        @if($match->isPlayed())
+            <x-match-score-trigger :match="$match" :show-url="$showUrl" :knockout="true" />
         @else
             <span class="text-muted">vs</span>
         @endif
     </div>
     <div class="bracket-match__team {{ $match->winner_id === $match->team2_id ? 'bracket-match__team--winner' : '' }}">
-        @include('partials.team-badge', ['team' => $match->team2])
+        {{ $match->team2->name ?? 'TBD' }}
     </div>
 </div>
