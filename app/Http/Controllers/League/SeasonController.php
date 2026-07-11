@@ -224,7 +224,15 @@ class SeasonController extends Controller
         $standings = $season->standings()
                            ->with(['team', 'position'])
                            ->get()
-                           ->groupBy('division');
+                           ->groupBy('division')
+                            ->sortBy(function ($divisionStandings, $division) {
+                                 return match ($division) {
+                                      DivisionLevel::DIVISION1->value => 1,
+                                      DivisionLevel::DIVISION2->value => 2,
+                                      DivisionLevel::DIVISION3->value => 3,
+                                      default => 4,
+                                 };
+                            });
 
         $divisions = [];
         foreach ($standings as $division => $divisionStandings) {

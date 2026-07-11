@@ -10,7 +10,7 @@
                 <tr>
                     <td>{{ $i + 1 }}</td>
                     <td>@include('partials.team-badge', ['team' => $item->team])</td>
-                    <td><strong>{{ data_get($item, $valueKey) }}{{ $suffix }}</strong></td>
+                    <td><strong>{{ is_float(data_get($item, $valueKey)) ? number_format(data_get($item, $valueKey), 2) : data_get($item, $valueKey) }}{{ $suffix }}</strong></td>
                 </tr>
                 @empty
                 <tr><td colspan="3" class="text-muted text-center">No data yet</td></tr>

@@ -19,7 +19,13 @@
                 @forelse($champions as $c)
                 <tr>
                     <td>{{ $c->season }}</td>
-                    <td>{{ $c->name }}</td>
+                    <td>@include('partials.team-badge', ['team' => (object) [
+                            'name' => $c->name,
+                            'color_1' => $c->color_1 ?? '#333',
+                            'color_2' => $c->color_2 ?? '#000',
+                            'color_3' => $c->color_3 ?? '#fff',
+                            'shirt_type' => $c->shirt_type ?? null,
+                        ]])</td>
                     @if($showDivision)<td>{{ $c->division ?? '' }}</td>@endif
                     <td>{{ $c->points }}</td>
                     <td>{{ $c->goal_scored }}</td>

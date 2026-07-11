@@ -136,7 +136,7 @@
     background: #f8f9fa;
 }
 .bracket-match__team { margin: .1rem 0; }
-.bracket-match__team--winner { font-weight: 700; }
+.bracket-match__team--winner { font-weight: 1000; }
 .bracket-match__score { text-align: center; font-size: .8rem; }
 </style>
 @endpush

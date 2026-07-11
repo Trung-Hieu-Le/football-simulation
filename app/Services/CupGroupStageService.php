@@ -13,7 +13,10 @@ class CupGroupStageService
         $standings = $season->standings()
             ->with(['team', 'position'])
             ->get()
-            ->groupBy('group');
+            ->groupBy('group')
+            ->sortBy(function ($groupStandings, $group) {
+                return $group;
+            });
 
         $groups = [];
         foreach ($standings as $group => $groupStandings) {

@@ -7,17 +7,21 @@
 
 <h2 class="mb-3">Group Stage Matches</h2>
 
-@foreach($matches as $group => $rounds)
-<h4 class="mt-4">Group {{ $group }}</h4>
-@foreach($rounds as $round => $roundMatches)
-    <x-match-round-card
-        :title="'Round ' . $round"
-        :matches="$roundMatches"
-        :simulate-url="route('cup.matches.simulate-round', [$season->id, $round])"
-        match-show-route="cup.matches.show"
-    />
-@endforeach
-@endforeach
+<div class="row">
+    @foreach($matches as $group => $rounds)
+        <div class="col-lg-3">
+            <h4 class="mt-4">Group {{ $group }}</h4>
+            @foreach($rounds as $round => $roundMatches)
+                <x-match-round-card
+                    :title="'Round ' . $round"
+                    :matches="$roundMatches"
+                    :simulate-url="route('cup.matches.simulate-round', [$season->id, $round])"
+                    match-show-route="cup.matches.show"
+                />
+            @endforeach
+        </div>
+    @endforeach
+</div>
 @endsection
 
 @push('scripts')
