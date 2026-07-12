@@ -2,7 +2,7 @@
 
 <div class="card mb-4">
     <div class="card-header">{{ $title }}</div>
-    <div class="card-body table-responsive">
+    <div class="card-body table-responsive" style="max-height: 220px; overflow-y: auto;">
         <table class="table table-sm mb-0">
             <thead>
                 <tr>

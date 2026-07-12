@@ -1,8 +1,8 @@
 (function () {
-    const statLabels = ['ATK', 'DEF', 'CTL', 'CRE', 'PAC', 'MEN', 'DIS', 'LCK', 'STA', 'GK'];
+    const statLabels = ['ATK', 'CRE', 'PAC', 'CTL', 'LCK', 'DEF', 'GOK', 'DIS', 'STA', 'MEN'];
     const statFields = [
-        'attack', 'defense', 'control', 'creative', 'pace',
-        'mental', 'discipline', 'luck', 'stamina', 'goalkeeping',
+        'attack', 'creative', 'pace', 'control', 'luck',
+        'defense', 'goalkeeping', 'discipline', 'stamina', 'mental',
     ];
     const charts = {};
 
