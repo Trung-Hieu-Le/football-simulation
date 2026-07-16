@@ -17,7 +17,16 @@
     <div class="col-md-4 col-lg-3"><label class="form-label">Color 1</label><input type="color" name="color_1" class="form-control" value="{{ old('color_1', $team->color_1 ?? '#000000') }}"></div>
     <div class="col-md-4 col-lg-3"><label class="form-label">Color 2</label><input type="color" name="color_2" class="form-control" value="{{ old('color_2', $team->color_2 ?? '#000000') }}"></div>
     <div class="col-md-4 col-lg-3"><label class="form-label">Color 3</label><input type="color" name="color_3" class="form-control" value="{{ old('color_3', $team->color_3 ?? '') }}"></div>
-    <div class="col-md-4 col-lg-3"><label class="form-label">Shirt Type</label><input type="text" name="shirt_type" class="form-control" value="{{ old('shirt_type', $team->shirt_type ?? '') }}"></div>
+    <div class="col-md-4 col-lg-3">
+        <label class="form-label">Shirt Type</label>
+        <select name="shirt_type" class="form-select">
+            @foreach(\App\Enums\ShirtType::cases() as $shirtType)
+                <option value="{{ $shirtType->value }}" @selected(old('shirt_type', $team->shirt_type ?? 'gradient') === $shirtType->value)>
+                    {{ $shirtType->label() }}
+                </option>
+            @endforeach
+        </select>
+    </div>
     <div class="col-12 team-stats-wrapper">
         <div class="row g-3">
             @foreach($stats as $stat)

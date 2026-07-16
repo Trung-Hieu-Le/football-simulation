@@ -5,14 +5,30 @@ namespace App\Services\Simulation\EventHandlers;
 use App\Constants\SimulationConstants;
 use App\Constants\FieldPositions;
 use App\Services\Simulation\BaseSimulationService;
+use App\Services\Simulation\Concerns\RecordsMatchEvents;
+use App\Services\Simulation\MetaModifiers;
 
 class FoulHandler extends BaseSimulationService
 {
+    use RecordsMatchEvents;
+
     protected ShotHandler $shotHandler;
 
     public function __construct()
     {
         $this->shotHandler = new ShotHandler();
+    }
+
+    /**
+     * Calculate foul threshold based on discipline
+     */
+    public function calculateFoulThreshold(float $discipline, array $modifiers = []): float
+    {
+        $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
+        $foulThreshold = SimulationConstants::BASE_FOUL_CHANCE - ($discipline * 0.08);
+        $foulThreshold *= $modifiers['foul_chance'];
+
+        return $this->clamp($foulThreshold, SimulationConstants::FOUL_CHANCE_MIN, SimulationConstants::FOUL_CHANCE_MAX);
     }
 
     public function handleFoul(
@@ -23,21 +39,22 @@ class FoulHandler extends BaseSimulationService
         $team1,
         $team2,
         int $time,
-        array &$matchData
+        array &$matchData,
+        array $modifiers = []
     ): array {
         $defendingTeam = $currentTeam == 1 ? 2 : 1;
         $this->recordFoul($defendingTeam, $time, $matchData);
 
         if (in_array($fieldPosition, [FieldPositions::PENALTY_AREA_TEAM1, FieldPositions::PENALTY_AREA_TEAM2])) {
             if (rand(1, 100) <= SimulationConstants::PENALTY_CHANCE) {
-                return $this->handlePenalty($currentTeam, $team1Stats, $team2Stats, $time, $matchData);
+                return $this->handlePenalty($currentTeam, $team1Stats, $team2Stats, $time, $matchData, $modifiers);
             }
         }
 
-        return $this->handleFreeKick($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $time, $matchData);
+        return $this->handleFreeKick($fieldPosition, $currentTeam, $team1Stats, $team2Stats, $time, $matchData, $modifiers);
     }
 
-    protected function handlePenalty(int $currentTeam, array $team1Stats, array $team2Stats, int $time, array &$matchData): array
+    protected function handlePenalty(int $currentTeam, array $team1Stats, array $team2Stats, int $time, array &$matchData, array $modifiers = []): array
     {
         $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
         $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;
@@ -53,11 +70,12 @@ class FoulHandler extends BaseSimulationService
             null,
             $time,
             $matchData,
-            true
+            true,
+            $modifiers
         );
     }
 
-    protected function handleFreeKick(int $fieldPosition, int $currentTeam, array $team1Stats, array $team2Stats, int $time, array &$matchData): array
+    protected function handleFreeKick(int $fieldPosition, int $currentTeam, array $team1Stats, array $team2Stats, int $time, array &$matchData, array $modifiers = []): array
     {
         $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
         $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;

@@ -4,6 +4,7 @@ namespace App\Services\Simulation;
 
 use App\Constants\SimulationConstants;
 use App\Constants\FieldPositions;
+use App\Services\Simulation\MetaModifiers;
 
 class MatchSimulator extends BaseSimulationService
 {
@@ -85,6 +86,7 @@ class MatchSimulator extends BaseSimulationService
         array &$matchData,
         bool $isExtraTime
     ): void {
+        $modifiers = MetaModifiers::for($seasonMeta);
         $fieldPosition = FieldPositions::MIDFIELD;
         $currentTeam = 1;
 
@@ -125,7 +127,8 @@ class MatchSimulator extends BaseSimulationService
                 $team1,
                 $team2,
                 $time,
-                $matchData
+                $matchData,
+                $modifiers
             );
 
             $fieldPosition = $result['fieldPosition'];

@@ -1,0 +1,199 @@
+.team-badge {
+    --c1: #1e88e5;
+    --c2: #ffffff;
+    --c3: #000;
+
+    color: var(--c3);
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 3px 3px;
+    display: inline-block;
+    width: 90px;
+    text-align: center;
+    font-weight: bold;
+    white-space: nowrap;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0);
+}
+
+/* Solid & Gradient */
+.shirt-solid {
+    background: var(--c1);
+    text-shadow: 0px 0px 7px var(--c2);
+}
+
+.shirt-sleeves {
+    background: linear-gradient(
+        90deg,
+        var(--c2) 0 18%,
+        var(--c1) 18% 82%,
+        var(--c2) 82%
+    );
+}
+
+.shirt-collar {
+    background: linear-gradient(
+        180deg,
+        var(--c2) 0 12%,
+        var(--c1) 12%
+    );
+}
+
+.shirt-gradient {
+    background: linear-gradient(135deg, var(--c1), var(--c2));
+}
+
+.shirt-radial-gradient {
+    background: radial-gradient(circle, var(--c1), var(--c2));
+}
+
+.shirt-heat-gradient {
+    background: 
+        radial-gradient(circle at 25% 25%, var(--c2) 0%, transparent 35%),
+        radial-gradient(circle at 75% 75%, var(--c2) 0%, transparent 35%),
+        radial-gradient(circle at 50% 50%, var(--c1) 0%, transparent 30%);
+    background-size: 50px 50px;
+    background-color: var(--c1);
+}
+
+/* Half Patterns */
+.shirt-half-vertical {
+    background: linear-gradient(90deg, var(--c1) 50%, var(--c2) 50%);
+}
+
+.shirt-half-horizontal {
+    background: linear-gradient(180deg, var(--c1) 50%, var(--c2) 50%);
+}
+
+.shirt-diagonal {
+    background: linear-gradient(135deg, var(--c1) 50%, var(--c2) 50%);
+}
+
+/* Stripes */
+.shirt-line-vertical {
+    background: linear-gradient(
+        90deg,
+        var(--c1) 0 38%,
+        var(--c2) 38% 62%,
+        var(--c1) 62%
+    );
+}
+
+.shirt-line-horizontal {
+    background: linear-gradient(
+        180deg,
+        var(--c1) 0 38%,
+        var(--c2) 38% 62%,
+        var(--c1) 62%
+    );
+}
+
+.shirt-sash {
+    background: linear-gradient(
+        135deg,
+        var(--c1) 0 38%,
+        var(--c2) 38% 62%,
+        var(--c1) 62%
+    );
+}
+
+.shirt-stripes-vertical {
+    background: repeating-linear-gradient(
+        90deg,
+        var(--c1) 0 10%,
+        var(--c2) 10% 15%
+    );
+}
+
+.shirt-stripes-horizontal {
+    background: repeating-linear-gradient(
+        180deg,
+        var(--c1) 0 6px,
+        var(--c2) 6px 8px
+    );
+}
+
+.shirt-stripes-diagonal {
+    background: repeating-linear-gradient(135deg,
+        var(--c1) 0px,
+        var(--c1) 22px,
+        var(--c2) 22px,
+        var(--c2) 44px
+    );
+}
+
+/* Dots & Grid */
+.shirt-checkered{
+    background-color: var(--c1);
+    background-image:
+        linear-gradient(45deg,var(--c2) 25%,transparent 25%),
+        linear-gradient(-45deg,var(--c2) 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,var(--c2) 75%),
+        linear-gradient(-45deg,transparent 75%,var(--c2) 75%);
+    background-size:20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.shirt-diamond {
+    background: 
+        linear-gradient(135deg, var(--c1) 25%, transparent 25%),
+        linear-gradient(225deg, var(--c1) 25%, transparent 25%),
+        linear-gradient(315deg, var(--c1) 25%, transparent 25%),
+        linear-gradient(45deg, var(--c1) 25%, var(--c2) 25%);
+    background-size: 15px 15px;
+    background-position: 0 0, 15px 0, 15px 15px, 0 15px;
+}
+
+.shirt-cross-fine {
+    background: 
+        linear-gradient(var(--c2) 1px, transparent 1px),
+        linear-gradient(90deg, var(--c2) 1px, transparent 1px);
+    background-size: 11px 11px;
+    background-color: var(--c1);
+}
+
+.shirt-dots-tiny {
+    background: radial-gradient(circle, var(--c2) 1px, transparent 2px);
+    background-size: 8px 8px;
+    background-color: var(--c1);
+}
+
+.shirt-dots-offset {
+    background: 
+        radial-gradient(circle, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle, var(--c2) 3px, transparent 3px);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+    background-color: var(--c1);
+}
+
+/* Shapes */
+.shirt-serrated {
+    background: conic-gradient(from -45deg at bottom,#0000,var(--c1) 1deg 89deg,#0000 90deg) 50%/15px 100%;
+    background-color: var(--c2);
+}
+
+.shirt-flower {
+    background: 
+        radial-gradient(circle at 15px 8px, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle at 21px 13px, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle at 18px 19px, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle at 8px 13px, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle at 11px 19px, var(--c2) 3px, transparent 3px),
+        radial-gradient(circle at 15px 14px, var(--c2) 2px, transparent 2px);
+    background-size: 30px 30px;
+    background-color: var(--c1);
+}
+
+.shirt-wave {
+    background:
+        radial-gradient(12.8px at 50% calc(100% + 9px), var(--c2) calc(99% - 5px), var(--c2) calc(101% - 5px) 99%,#0000 101%) calc(50% - 10px) calc(50% - 5px + .5px)/20px 10px ,
+        radial-gradient(12.8px at 50% -9px,#0000 calc(99% - 5px), var(--c2) calc(101% - 5px) 99%,#0000 101%) 50% calc(50% + 5px)/20px 10px ;
+    background-color: var(--c1);
+}
+
+.shirt-zigzag {
+  background: 
+    linear-gradient(135deg, var(--c2) 25%, transparent 25%) 0 10px/20px 20px,
+    linear-gradient(-135deg, var(--c2) 25%, transparent 25%) 20px 0/20px 20px;
+  background-color: var(--c1);
+}

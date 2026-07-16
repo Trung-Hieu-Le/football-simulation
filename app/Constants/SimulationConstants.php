@@ -16,10 +16,6 @@ class SimulationConstants
     public const EXTRATIME_START_SITUATION = self::TOTAL_SITUATIONS_FULLTIME + 1; // 271
     public const EXTRATIME_HALFTIME_START_SITUATION = self::EXTRATIME_HALFTIME_SITUATION + 1; // 316
 
-    // Meta factors
-    public const META_BONUS = 1.08; // +8%
-    public const META_PENALTY = 0.92; // -8%
-
     // Stamina & fatigue
     public const STAMINA_FACTOR_BASE = 0.5;
     public const STAMINA_DIVISOR = 200;
@@ -40,10 +36,10 @@ class SimulationConstants
     public const FOUL_CHANCE_MAX = 12;
     public const PENALTY_CHANCE = 40; // % penalty when foul at position 1 or 9
 
-    // Shot decision
+    // Shot decision — attack primary, mental has noticeable secondary effect
     public const SHOOT_DECISION_BASE_CHANCE = 8;
-    public const SHOOT_DECISION_ATTACK_MULTIPLIER = 0.18;
-    public const SHOOT_DECISION_MENTAL_MULTIPLIER = 0.10;
+    public const SHOOT_DECISION_ATTACK_MULTIPLIER = 0.22;
+    public const SHOOT_DECISION_MENTAL_MULTIPLIER = 0.08;  // Increased from 0.06 for more noticeable mental impact
     public const SHOOT_DECISION_MAX = 55;
 
     // Shot & scoring

@@ -2,21 +2,26 @@
 
 namespace App\Services\Simulation;
 
-use App\Constants\SimulationConstants;
 use App\Constants\FieldPositions;
-use App\Constants\StatsWeights;
+use App\Services\Simulation\EventHandlers\BuildUpHandler;
 use App\Services\Simulation\EventHandlers\ShotHandler;
 use App\Services\Simulation\EventHandlers\FoulHandler;
 use App\Services\Simulation\EventHandlers\CounterAttackHandler;
 
+/**
+ * Thin orchestrator for match situations
+ * Delegates to specialized handlers: Foul → BuildUp → Shot/Counter
+ */
 class SituationProcessor extends BaseSimulationService
 {
+    protected BuildUpHandler $buildUpHandler;
     protected ShotHandler $shotHandler;
     protected FoulHandler $foulHandler;
     protected CounterAttackHandler $counterHandler;
 
     public function __construct()
     {
+        $this->buildUpHandler = new BuildUpHandler();
         $this->shotHandler = new ShotHandler();
         $this->foulHandler = new FoulHandler();
         $this->counterHandler = new CounterAttackHandler();
@@ -30,10 +35,16 @@ class SituationProcessor extends BaseSimulationService
         $team1,
         $team2,
         int $time,
-        array &$matchData
+        array &$matchData,
+        array $modifiers = []
     ): array {
+        $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
         $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;
-        $foulThreshold = $this->calculateFoulThreshold($defendingStats['discipline']);
+
+        $foulThreshold = $this->foulHandler->calculateFoulThreshold(
+            $defendingStats['discipline'],
+            $modifiers
+        );
 
         if (rand(1, 100) <= $foulThreshold) {
             return $this->foulHandler->handleFoul(
@@ -44,18 +55,28 @@ class SituationProcessor extends BaseSimulationService
                 $team1,
                 $team2,
                 $time,
-                $matchData
+                $matchData,
+                $modifiers
             );
         }
 
-        $moveResult = $this->moveBall($fieldPosition, $currentTeam, $team1Stats, $team2Stats);
-        
+        $moveResult = $this->buildUpHandler->moveBall(
+            $fieldPosition,
+            $currentTeam,
+            $team1Stats,
+            $team2Stats,
+            $time,
+            $matchData,
+            $modifiers
+        );
+
         if ($moveResult['stolen']) {
             $counterResult = $this->counterHandler->attemptCounterAttack(
                 $moveResult['newPosition'],
                 $currentTeam,
                 $currentTeam == 1 ? $team1Stats : $team2Stats,
-                $currentTeam == 1 ? $team2Stats : $team1Stats
+                $currentTeam == 1 ? $team2Stats : $team1Stats,
+                $modifiers
             );
 
             if ($counterResult !== null) {
@@ -74,7 +95,8 @@ class SituationProcessor extends BaseSimulationService
             $shotDecisionChance = $this->shotDecisionChance(
                 $moveResult['newPosition'],
                 $attackingStats['attack'],
-                $attackingStats['mental']
+                $attackingStats['mental'],
+                $modifiers
             );
 
             if (rand(1, 100) <= $shotDecisionChance) {
@@ -86,7 +108,9 @@ class SituationProcessor extends BaseSimulationService
                     $team1,
                     $team2,
                     $time,
-                    $matchData
+                    $matchData,
+                    false,
+                    $modifiers
                 );
             }
         }
@@ -96,57 +120,5 @@ class SituationProcessor extends BaseSimulationService
             'currentTeam' => $currentTeam,
             'goal' => false,
         ];
-    }
-
-    protected function moveBall(int $fieldPosition, int $currentTeam, array $team1Stats, array $team2Stats): array
-    {
-        $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
-        $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;
-
-        $buildUpPower = ($attackingStats['control'] * StatsWeights::BUILD_UP_CONTROL_WEIGHT)
-                      + ($attackingStats['creative'] * StatsWeights::BUILD_UP_CREATIVE_WEIGHT)
-                      + ($attackingStats['stamina'] * StatsWeights::BUILD_UP_STAMINA_WEIGHT);
-
-        $zoneDifficulty = $this->getZoneDifficulty($fieldPosition);
-        $stopProgress = ($defendingStats['defense'] * StatsWeights::STOP_DEFENSE_WEIGHT)
-                      + ($defendingStats['discipline'] * StatsWeights::STOP_DISCIPLINE_WEIGHT);
-
-        $moveChance = $buildUpPower / ($buildUpPower + ($stopProgress * $zoneDifficulty));
-        $moveChance = $this->clamp($moveChance * 100, 5, 95);
-
-        if (rand(1, 100) > $moveChance) {
-            return ['newPosition' => $fieldPosition, 'stolen' => true];
-        }
-
-        $moveDistance = SimulationConstants::MOVE_DISTANCE_NORMAL;
-        if ($attackingStats['pace'] > SimulationConstants::SPEED_THRESHOLD 
-            && rand(1, 100) <= SimulationConstants::CREATIVE_BONUS_CHANCE) {
-            $moveDistance = SimulationConstants::MOVE_DISTANCE_FAST;
-        }
-
-        $newPosition = $currentTeam == 1
-                     ? min(10, $fieldPosition + $moveDistance)
-                     : max(0, $fieldPosition - $moveDistance);
-
-        $controlRatio = ($attackingStats['control'] / ($attackingStats['control'] + $defendingStats['control'])) * 100;
-        $stealThreshold = $controlRatio - 15;
-
-        $stolen = rand(1, 100) > $stealThreshold;
-
-        return [
-            'newPosition' => $newPosition,
-            'stolen' => $stolen,
-        ];
-    }
-
-    protected function calculateFoulThreshold(float $discipline): float
-    {
-        $foulThreshold = SimulationConstants::BASE_FOUL_CHANCE - ($discipline * 0.08);
-        return $this->clamp($foulThreshold, SimulationConstants::FOUL_CHANCE_MIN, SimulationConstants::FOUL_CHANCE_MAX);
-    }
-
-    protected function getZoneDifficulty(int $position): float
-    {
-        return StatsWeights::ZONE_PROGRESS_DIFFICULTY[$position] ?? 1.0;
     }
 }

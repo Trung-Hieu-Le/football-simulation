@@ -26,11 +26,11 @@
 <style>
 .match-row-grid {
     display: grid;
-    grid-template-columns: 1fr minmax(100px, auto) 1fr;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: .5rem;
 }
-.match-row-grid__score { min-width: 100px; }
+.match-row-grid__score { min-width: 60px; }
 .match-score-trigger { cursor: pointer; }
 </style>
 @endpush

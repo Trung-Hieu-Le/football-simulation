@@ -100,7 +100,7 @@ football-simulation/
 │   │   └── StatsWeights.php
 │   ├── Enums/
 │   │   ├── SeasonMeta.php             # Đã có
-│   │   ├── Weather.php
+│   │   ├── ShirtType.php
 │   │   ├── MatchResult.php
 │   │   ├── DivisionLevel.php
 │   │   ├── LeagueSeasonResult.php
@@ -335,17 +335,9 @@ possession, counter, pressing, tiki-taka, long_ball,
 build_up, low_block, high_risk, high_line
 ```
 
-Bonus +8% / penalty -8% lên stats tương ứng (xem mục 6.3).
+Bonus +5% / penalty -5% lên stats tương ứng (xem mục 6.3).
 
-### 5.2 `Weather` (mới — optional phase 2)
-
-```
-clear, rainy, snowy, windy
-```
-
-Ảnh hưởng `pace`, `stamina` khi simulate (có thể implement sau).
-
-### 5.3 `MatchResult` (cho ELO)
+### 5.2 `MatchResult` (cho ELO)
 
 ```php
 enum MatchResult: float {
@@ -533,14 +525,62 @@ staminaFactor = 1 - (phaseDecay * (1 - (stamina/100)^0.65))
 | Class | Trách nhiệm |
 |-------|-------------|
 | `BaseSimulationService` | `calculateTeamStats()`, `applyMetaFactors()`, `getKickoffTeam()` |
-| `SituationProcessor` | `processSituation()`, `moveBall()` |
-| `ShotHandler` | `handleShot()`, shot formulas |
-| `FoulHandler` | `handleFoul()`, `handleFreeKick()`, `handlePenalty()` |
-| `CounterAttackHandler` | `handleCounterAttackAfterMiss()` |
+| `SituationProcessor` | **Thin orchestrator** — delegates to handlers: Foul → BuildUp → Shot/Counter |
+| `BuildUpHandler` | `moveBall()` + special events: miscontrol, dribble, offside, tackle, pressing |
+| `ShotHandler` | `handleShot()`, shot formulas, `clutchShot()`, `tryOwnGoal()` |
+| `FoulHandler` | `handleFoul()`, `handleFreeKick()`, `handlePenalty()`, `calculateFoulThreshold()` |
+| `CounterAttackHandler` | `attemptCounterAttack()` |
 | `MatchSimulator` | `simulateFullTime()`, `simulateExtraTime()` — inject handlers |
 | `PenaltyShootoutService` | `simulatePenaltyShootout()` |
+| `RecordsMatchEvents` (trait) | `recordGoal()` (OG/P/F), `recordTimelineEvent()` — used by handlers |
 
 Constants chuyển sang `app/Constants/*`.
+
+### 7.2 Event Handler Refactoring (2026-07-16)
+
+**Architecture:** Process-based handlers thay vì micro-event handlers
+
+**BuildUpHandler** — Tất cả logic di chuyển bóng:
+- `moveBall()`: Build-up power, zone difficulty, steal mechanics
+- Special events (luck-influenced):
+  - `rollMiscontrol()`: Low control → lose ball
+  - `rollDribble()`: High pace/creative → move +2
+  - `rollOffside()`: Low discipline → offside (ball to midfield)
+  - `rollTackle()`: High defense → steal ball
+  - `rollPressingSteal()`: High pace/discipline → pressing steal
+
+**ShotHandler** — Tất cả logic sút:
+- `handleShot()`: Shot mechanics, on-target, goal chance
+- Special events (luck-influenced):
+  - `rollClutchShot()`: Last minutes (85-90, 115-120) → +30% goal chance
+  - `tryOwnGoal()`: Penalty area + low discipline → own goal (rare)
+- Removed: `rollLuckyGoal()` (thay bằng special events khác)
+
+**FoulHandler** — Tất cả logic phạm lỗi:
+- `calculateFoulThreshold()`: Discipline → foul chance
+- `handleFoul()`, `handlePenalty()`, `handleFreeKick()`
+
+**SituationProcessor** — Thin orchestrator:
+- No complex logic, chỉ gọi handlers theo flow: Foul → BuildUp → Shot/Counter
+
+**RecordsMatchEvents trait:**
+- `recordGoal(type)`: 'goal', 'penalty', 'freekick', 'own_goal'
+- `recordTimelineEvent()`: Ghi timeline events vào matchData
+
+**Luck integration:** Luck không còn `rollLuckyGoal()`, thay vào đó ảnh hưởng các special events khác (miscontrol, dribble, offside, tackle, pressing, clutchShot, ownGoal) qua `specialEventChance()`.
+
+### 7.3 Secondary Stats Rebalancing (2026-07-16)
+
+**Nguyên tắc:** Primary stats (attack, defense, control, stamina) dominant, secondary stats (creative, mental, discipline, pace, goalkeeping, luck) noticeable but lesser impact.
+
+**Adjusted weights:**
+- `BUILD_UP_CREATIVE_WEIGHT`: 0.8 → 1.0 (more noticeable creative impact)
+- `STOP_DISCIPLINE_WEIGHT`: 0.4 → 0.5 (more noticeable discipline impact)
+- `SHOT_POWER_MENTAL_WEIGHT`: 0.4 → 0.5 (more noticeable mental impact)
+- `SAVE_POWER_MENTAL_WEIGHT`: 0.3 → 0.4 (more noticeable mental impact)
+- `SHOOT_DECISION_MENTAL_MULTIPLIER`: 0.06 → 0.08 (more noticeable mental impact on shot decisions)
+
+**Result:** Secondary stats vẫn có tác động rõ ràng (ví dụ: mental cho shoot decision và penalty, creative cho build-up) nhưng không dominant hơn primary stats.
 
 ### 7.2 `EloRatingService`
 

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Team;
 use App\Models\Region;
+use App\Enums\ShirtType;
 use App\Services\EloRatingService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TeamController extends Controller
 {
@@ -21,7 +23,17 @@ class TeamController extends Controller
         $teams = Team::with('region')->orderBy('id')->get();
         $regions = Region::all();
 
-        return view('teams.index', compact('teams', 'regions'));
+        // Order must match public/js/radar-chart.js statFields
+        $statFields = [
+            'attack', 'creative', 'pace', 'control', 'luck',
+            'defense', 'goalkeeping', 'discipline', 'stamina', 'mental',
+        ];
+        $avgStats = array_map(
+            fn (string $field) => round((float) $teams->avg($field), 1),
+            $statFields
+        );
+
+        return view('teams.index', compact('teams', 'regions', 'avgStats'));
     }
 
     public function store(Request $request)
@@ -66,7 +78,7 @@ class TeamController extends Controller
             'color_1' => 'nullable|string|max:10',
             'color_2' => 'nullable|string|max:10',
             'color_3' => 'nullable|string|max:10',
-            'shirt_type' => 'nullable|string|max:45',
+            'shirt_type' => ['nullable', Rule::enum(ShirtType::class)],
             'attack' => 'integer|min:1|max:100',
             'defense' => 'integer|min:1|max:100',
             'control' => 'integer|min:1|max:100',

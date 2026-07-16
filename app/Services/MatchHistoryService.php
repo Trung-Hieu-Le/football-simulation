@@ -40,7 +40,7 @@ class MatchHistoryService
         $this->updateLeagueStanding($team1Id, $seasonId, $division, $team1Score, $team2Score, $team1Fouls, $team1Possession);
         $this->updateLeagueStanding($team2Id, $seasonId, $division, $team2Score, $team1Score, $team2Fouls, $team2Possession);
 
-        $this->eloService->updateEloAfterMatch($team1, $team2, $team1Score, $team2Score);
+        $this->eloService->updateEloAfterMatch($team1, $team2, $team1Score, $team2Score, $division);
     }
 
     public function updateCupGroupStageHistory(

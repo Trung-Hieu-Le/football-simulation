@@ -18,7 +18,7 @@ Toàn bộ Laravel football-simulation application đã được refactor theo `
   - `SimulationConstants`: Tất cả hằng số simulation
   - `FieldPositions`: 11 vị trí sân (0-10)
   - `StatsWeights`: Trọng số tính toán (shot power, build-up, counter, etc.)
-  - `Weather`, `MatchResult`, `DivisionLevel`, `LeagueSeasonResult`, `CupSeasonResult`
+  - `ShirtType`, `MatchResult`, `DivisionLevel`, `LeagueSeasonResult`, `CupSeasonResult`
 
 ### 2. Database ✅
 
@@ -248,7 +248,7 @@ app/
 │   └── StatsWeights.php
 ├── Enums/
 │   ├── SeasonMeta.php
-│   ├── Weather.php
+│   ├── ShirtType.php
 │   ├── MatchResult.php
 │   ├── DivisionLevel.php
 │   ├── LeagueSeasonResult.php

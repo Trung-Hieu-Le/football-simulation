@@ -6,9 +6,17 @@ use App\Constants\SimulationConstants;
 use App\Constants\FieldPositions;
 use App\Constants\StatsWeights;
 use App\Services\Simulation\BaseSimulationService;
+use App\Services\Simulation\Concerns\RecordsMatchEvents;
+use App\Services\Simulation\MetaModifiers;
 
 class ShotHandler extends BaseSimulationService
 {
+    use RecordsMatchEvents;
+
+    // Special shot event constants
+    public const CLUTCH_SHOT_BASE_CHANCE = 3;  // Base chance for clutch shot in last minutes
+    public const OWN_GOAL_BASE_CHANCE = 1;     // Base chance for own goal
+
     public function handleShot(
         int $fieldPosition,
         int $currentTeam,
@@ -18,8 +26,10 @@ class ShotHandler extends BaseSimulationService
         $team2,
         int $time,
         array &$matchData,
-        bool $isPenalty = false
+        bool $isPenalty = false,
+        array $modifiers = []
     ): array {
+        $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
         $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
         $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;
 
@@ -34,29 +44,48 @@ class ShotHandler extends BaseSimulationService
 
         $this->recordShot($currentTeam, $matchData, $onTarget);
 
+        // Check for own goal (rare defensive error in penalty area)
+        if ($this->tryOwnGoal($fieldPosition, $defendingStats['discipline'], $defendingStats['luck'])) {
+            $this->recordGoal($currentTeam, $time, $matchData, 'own_goal');
+            return [
+                'fieldPosition' => FieldPositions::MIDFIELD,
+                'currentTeam' => $currentTeam == 1 ? 2 : 1,
+                'goal' => true,
+                'goalScoredBy' => $currentTeam,
+            ];
+        }
+
         if ($onTarget) {
             $goalChance = $this->shotGoalChance(
                 $attackingStats['attack'],
                 $attackingStats['mental'],
                 $defendingStats['goalkeeping'],
+                $defendingStats['defense'],
                 $defendingStats['mental']
             ) * 100;
+
+            // Clutch shot bonus in last minutes
+            if ($this->rollClutchShot($time, $attackingStats['mental'], $attackingStats['luck'], $modifiers)) {
+                $goalBoost = 1.0 + (0.3 * $modifiers['clutch_goal']);
+                $goalChance = min(95, $goalChance * $goalBoost);
+                $this->recordTimelineEvent($time, "Clutch shot by Team{$currentTeam}!", $matchData);
+            }
 
             $isGoal = rand(1, 100) <= $goalChance;
 
             if ($isGoal) {
-                $this->recordGoal($currentTeam, $time, $matchData);
+                $this->recordGoal($currentTeam, $time, $matchData, 'goal');
                 return [
                     'fieldPosition' => FieldPositions::MIDFIELD,
                     'currentTeam' => $currentTeam == 1 ? 2 : 1,
                     'goal' => true,
                     'goalScoredBy' => $currentTeam,
                 ];
-            } else {
-                // Shot on target but saved - 30% counter chance
-                if (rand(1, 100) <= SimulationConstants::COUNTER_AFTER_SHOT_CHANCE) {
-                    return $this->counterAttack($fieldPosition, $currentTeam, $defendingStats);
-                }
+            }
+
+            // Shot on target but saved - 30% counter chance
+            if (rand(1, 100) <= SimulationConstants::COUNTER_AFTER_SHOT_CHANCE) {
+                return $this->counterAttack($fieldPosition, $currentTeam, $defendingStats);
             }
         } else {
             // Shot off target - 50% steal chance
@@ -97,7 +126,7 @@ class ShotHandler extends BaseSimulationService
             $isGoal = rand(1, 100) <= $goalChance;
 
             if ($isGoal) {
-                $this->recordGoal($currentTeam, $time, $matchData, true);
+                $this->recordGoal($currentTeam, $time, $matchData, 'penalty');
                 return [
                     'fieldPosition' => FieldPositions::MIDFIELD,
                     'currentTeam' => $currentTeam == 1 ? 2 : 1,
@@ -139,7 +168,7 @@ class ShotHandler extends BaseSimulationService
             $isGoal = rand(1, 100) <= $goalChance;
 
             if ($isGoal) {
-                $this->recordGoal($currentTeam, $time, $matchData, false, true);
+                $this->recordGoal($currentTeam, $time, $matchData, 'freekick');
                 return [
                     'fieldPosition' => FieldPositions::MIDFIELD,
                     'currentTeam' => $currentTeam == 1 ? 2 : 1,
@@ -182,26 +211,48 @@ class ShotHandler extends BaseSimulationService
         }
     }
 
-    protected function recordGoal(int $team, int $time, array &$matchData, bool $isPenalty = false, bool $isFreeKick = false): void
+    /**
+     * Check for clutch shot in last minutes (85-90, 115-120)
+     * High mental stat increases chance
+     */
+    public function rollClutchShot(int $time, float $mental, float $luck, array $modifiers = []): bool
     {
-        $scoreKey = $team == 1 ? 'team1_score' : 'team2_score';
-        $matchData[$scoreKey]++;
+        $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
+        $isLastMinutes = ($time >= 85 && $time <= 90) || ($time >= 115 && $time <= 120);
 
-        $teamId = $team == 1 ? $matchData['team1_id'] : $matchData['team2_id'];
-        $teamName = $team == 1 ? $matchData['team1_name'] : $matchData['team2_name'];
-        $type = $isPenalty ? 'penalty' : ($isFreeKick ? 'freekick' : 'goal');
-        $suffix = $isPenalty ? ' (P)' : ($isFreeKick ? ' (F)' : '');
+        if (!$isLastMinutes) {
+            return false;
+        }
 
-        $matchData['goals'][] = [
-            'minute' => $time,
-            'team_id' => $teamId,
-            'type' => $type,
-            'label' => "{$time}' {$teamName}{$suffix}",
-        ];
+        $baseChance = self::CLUTCH_SHOT_BASE_CHANCE * $modifiers['clutch_goal'];
+        $mentalBonus = ($mental - 70) * 0.08;
+        $luckModifier = $this->specialEventChance($luck) * 0.2;
 
-        $eventType = $isPenalty ? 'Penalty GOAL' : ($isFreeKick ? 'Free Kick GOAL' : 'GOAL');
-        $teamLabel = $team == 1 ? 'Team1' : 'Team2';
-        $matchData['specialEvents'][] = "{$time}': {$eventType} by {$teamLabel}!";
+        $chance = $baseChance + $mentalBonus + $luckModifier;
+        $chance = $this->clamp($chance, 0.5, 15);
+
+        return rand(1, 1000) <= ($chance * 10);
+    }
+
+    /**
+     * Try for own goal event (rare, defender error in penalty area)
+     * Low discipline or bad luck increases chance
+     */
+    public function tryOwnGoal(int $fieldPosition, float $discipline, float $luck): bool
+    {
+        // Only in penalty areas (positions 1 and 9)
+        if (!in_array($fieldPosition, [1, 9])) {
+            return false;
+        }
+
+        $baseChance = self::OWN_GOAL_BASE_CHANCE;
+        $disciplineBonus = ($discipline - 70) * 0.03;
+        $luckModifier = $this->specialEventChance($luck) * 0.3;
+        
+        $chance = $baseChance - $disciplineBonus + $luckModifier;
+        $chance = $this->clamp($chance, 0.1, 5);
+        
+        return rand(1, 1000) <= ($chance * 10);
     }
 
     protected function counterAttack(int $fieldPosition, int $currentTeam, array $defendingStats): array
