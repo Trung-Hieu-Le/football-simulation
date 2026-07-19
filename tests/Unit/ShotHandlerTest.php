@@ -41,7 +41,7 @@ class ShotHandlerTest extends TestCase
         $highMentalCount = 0;
         $lowMentalCount = 0;
 
-        for ($i = 0; $i < 200; $i++) {
+        for ($i = 0; $i < 2000; $i++) {
             if ($this->handler->rollClutchShot(87, 90, 50, [])) {
                 $highMentalCount++;
             }
@@ -100,6 +100,8 @@ class ShotHandlerTest extends TestCase
             'goalkeeping' => 70,
             'defense' => 70,
             'discipline' => 75,
+            'pace' => 75,
+            'creative' => 70,
             'luck' => 50,
         ];
 
@@ -109,6 +111,8 @@ class ShotHandlerTest extends TestCase
             'goalkeeping' => 80,
             'defense' => 75,
             'discipline' => 80,
+            'pace' => 70,
+            'creative' => 65,
             'luck' => 50,
         ];
 

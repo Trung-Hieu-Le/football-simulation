@@ -10,7 +10,7 @@
 
 <div class="row">
     @forelse($seasons as $season)
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Season {{ $season->season }}</h5>

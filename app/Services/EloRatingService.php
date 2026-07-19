@@ -42,8 +42,8 @@ class EloRatingService
     public function scaleByDivision(float $change, ?string $division): int
     {
         [$gainMult, $lossMult] = match ($division) {
-            DivisionLevel::DIVISION1->value => [1.3, 0.7],
-            DivisionLevel::DIVISION3->value => [0.7, 1.3],
+            DivisionLevel::DIVISION1->value => [1.2, 0.8],
+            DivisionLevel::DIVISION3->value => [0.8, 1.2],
             default => [1.0, 1.0],
         };
 
