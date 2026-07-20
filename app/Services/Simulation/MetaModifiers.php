@@ -8,23 +8,23 @@ class MetaModifiers
 {
     public const KEYS = [
         'move_chance',
-        'contest',
-        'dribble',
+        'retain_chance',
         'pressing',
-        'tackle',
-        'offside',
         'miscontrol',
-        'steal_threshold',
+        'contest',
+        'pace_boost',
+        'offside',
+        'aerial',
+        'foul_chance',
         'shot_decision',
         'clutch_goal',
         'counter_chance',
         'counter_distance',
-        'foul_chance',
         'stamina_decay',
         'long_ball_skip',
     ];
 
-    /** @var array<string, string> */
+    /** @var array<string, string> Legacy meta mapping */
     protected const LEGACY_MAP = [
         'tiki-taka' => 'possession',
         'build_up' => 'possession',
@@ -39,7 +39,7 @@ class MetaModifiers
     {
         $modifiers = [];
         foreach (self::KEYS as $key) {
-            $modifiers[$key] = $key === 'long_ball_skip' ? 0.0 : 1.0;
+            $modifiers[$key] = ($key === 'long_ball_skip') ? 0.0 : 1.0;
         }
 
         return $modifiers;
@@ -52,85 +52,78 @@ class MetaModifiers
 
         $overrides = match ($normalized) {
             SeasonMeta::POSSESSION->value => [
-                'move_chance' => 1.20,
+                'move_chance' => 1.15,
+                'retain_chance' => 1.25,
+                'pressing' => 0.75,      // Less vulnerable to press
+                'miscontrol' => 0.85,
                 'contest' => 0.88,
-                'shot_decision' => 0.75,
-                'miscontrol' => 0.80,
-                'pressing' => 0.90,
-                'steal_threshold' => 1.15,
-                'counter_chance' => 0.85,
+                'shot_decision' => 0.70,
+                'counter_chance' => 0.80,
                 'stamina_decay' => 1.05,
             ],
             SeasonMeta::DIRECT->value => [
-                'move_chance' => 1.10,
+                'move_chance' => 1.05,
+                'retain_chance' => 0.80,
+                'pace_boost' => 1.40,
                 'shot_decision' => 1.30,
-                'dribble' => 0.85,
                 'miscontrol' => 1.15,
                 'contest' => 0.95,
                 'clutch_goal' => 1.15,
             ],
             SeasonMeta::COUNTER_ATTACK->value => [
-                'counter_chance' => 1.40,
-                'counter_distance' => 1.30,
-                'move_chance' => 0.90,
+                'counter_chance' => 1.50,
+                'counter_distance' => 1.35,
+                'move_chance' => 0.85,
+                'retain_chance' => 0.90,
                 'shot_decision' => 1.15,
-                'pressing' => 1.10,
+                'pressing' => 1.15,      // Press after losing ball high
                 'contest' => 1.05,
             ],
             SeasonMeta::HIGH_PRESS->value => [
-                'pressing' => 1.40,
-                'tackle' => 1.20,
-                'foul_chance' => 1.20,
+                'pressing' => 1.50,      // Press much more
                 'contest' => 1.15,
-                'stamina_decay' => 1.35,
-                'offside' => 1.10,
-                'clutch_goal' => 1.10,
+                'foul_chance' => 1.25,
+                'move_chance' => 0.95,
+                'stamina_decay' => 1.30, // High fatigue
             ],
             SeasonMeta::LOW_BLOCK->value => [
-                'pressing' => 0.70,
-                'tackle' => 1.15,
-                'move_chance' => 0.85,
-                'contest' => 1.20,
-                'shot_decision' => 0.90,
+                'pressing' => 0.60,      // Midfield press low
+                'move_chance' => 0.80,
+                'contest' => 1.25,       // Deep contests
                 'counter_chance' => 1.20,
-                'foul_chance' => 0.85,
-                'stamina_decay' => 0.90,
+                'shot_decision' => 0.85,
             ],
             SeasonMeta::LONG_BALL->value => [
-                'long_ball_skip' => 0.20,
-                'move_chance' => 0.95,
-                'miscontrol' => 1.25,
-                'contest' => 1.15,
-                'shot_decision' => 1.20,
-                'offside' => 1.20,
+                'long_ball_skip' => 0.20,  // +20% long ball chance; +3 when creative high
+                'move_chance' => 0.90,
+                'retain_chance' => 0.80,   // Harder to keep after long ball
+                'miscontrol' => 1.20,
+                'offside' => 1.25,
+                'aerial' => 1.10,          // Slight aerial (not main like wing)
             ],
             SeasonMeta::WING_PLAY->value => [
-                'dribble' => 1.35,
-                'move_chance' => 1.10,
-                'offside' => 0.80,
-                'shot_decision' => 1.05,
-                'tackle' => 0.95,
+                'aerial' => 1.35,
+                'pressing' => 0.70,
+                'pace_boost' => 1.15,
+                'offside' => 0.85,
+                'retain_chance' => 1.05,
             ],
-            default => [],
+            SeasonMeta::BALANCED->value => [
+                // All 1.0 (defaults)
+            ],
+            default => []
         };
 
-        return array_merge($modifiers, $overrides);
+        foreach ($overrides as $key => $value) {
+            $modifiers[$key] = $value;
+        }
+
+        return $modifiers;
     }
 
-    public static function normalize(string $meta): string
+    protected static function normalize(string $meta): string
     {
-        $meta = strtolower(trim($meta));
-
-        if (isset(self::LEGACY_MAP[$meta])) {
-            return self::LEGACY_MAP[$meta];
-        }
-
-        foreach (SeasonMeta::values() as $value) {
-            if ($meta === $value) {
-                return $value;
-            }
-        }
-
-        return SeasonMeta::BALANCED->value;
+        $lower = strtolower(trim($meta));
+        return self::LEGACY_MAP[$lower] ?? $lower;
     }
 }

@@ -109,6 +109,25 @@ class SeasonController extends Controller
         }
     }
 
+    public function destroyAll()
+    {
+        try {
+            DB::transaction(function () {
+                Position::query()->delete();
+                Standing::query()->delete();
+                LeagueMatch::query()->delete();
+                GroupTeam::query()->delete();
+                Season::query()->delete();
+            });
+
+            return redirect()->route('league.seasons.index')
+                ->with('success', 'All seasons deleted successfully!');
+        } catch (\Throwable $e) {
+            Log::error('League destroy all seasons failed', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Xóa tất cả mùa giải thất bại: ' . $e->getMessage());
+        }
+    }
+
     public function show($id)
     {
         $season = Season::with(['groupTeams', 'standings.team', 'standings.position'])

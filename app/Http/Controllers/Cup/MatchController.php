@@ -82,8 +82,23 @@ class MatchController extends Controller
             $match->team1,
             $match->team2,
             $seasonMeta,
-            false
+            false,
+            true
         );
+
+        // DEBUG: dump before DB — remove after balancing
+        // dd([
+        //     'match_id' => $match->id,
+        //     'teams' => [
+        //         'team1' => ['id' => $match->team1_id, 'name' => $match->team1->name],
+        //         'team2' => ['id' => $match->team2_id, 'name' => $match->team2->name],
+        //     ],
+        //     'meta' => $seasonMeta,
+        //     'summary' => $result['debug_summary'] ?? null,
+        //     'goals' => $result['goals'] ?? [],
+        //     'specialEvents' => $result['specialEvents'] ?? [],
+        //     'timeline' => $result['debug_log'] ?? [],
+        // ]);
 
         $matchEvents = $this->eventNormalizer->buildFromSimulation($result);
 

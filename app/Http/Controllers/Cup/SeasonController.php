@@ -126,6 +126,26 @@ class SeasonController extends Controller
         }
     }
 
+    public function destroyAll()
+    {
+        try {
+            DB::transaction(function () {
+                Position::query()->delete();
+                Standing::query()->delete();
+                GroupStageMatch::query()->delete();
+                EliminateMatch::query()->delete();
+                GroupTeam::query()->delete();
+                Season::query()->delete();
+            });
+
+            return redirect()->route('cup.seasons.index')
+                ->with('success', 'All seasons deleted successfully!');
+        } catch (\Throwable $e) {
+            Log::error('Cup destroy all seasons failed', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Xóa tất cả mùa giải thất bại: ' . $e->getMessage());
+        }
+    }
+
     protected function distributeToGroups(Season $season, $teams): void
     {
         $pots = $this->potSeedingService->distributeToPots($teams);

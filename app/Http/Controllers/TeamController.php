@@ -26,7 +26,7 @@ class TeamController extends Controller
         // Order must match public/js/radar-chart.js statFields
         $statFields = [
             'attack', 'creative', 'pace', 'control', 'luck',
-            'defense', 'goalkeeping', 'discipline', 'stamina', 'mental',
+            'defense', 'goalkeeping', 'physical', 'stamina', 'mental',
         ];
         $avgStats = array_map(
             fn (string $field) => round((float) $teams->avg($field), 1),
@@ -85,7 +85,7 @@ class TeamController extends Controller
             'creative' => 'integer|min:1|max:100',
             'pace' => 'integer|min:1|max:100',
             'mental' => 'integer|min:1|max:100',
-            'discipline' => 'integer|min:1|max:100',
+            'physical' => 'integer|min:1|max:100',
             'luck' => 'integer|min:1|max:100',
             'stamina' => 'integer|min:1|max:100',
             'goalkeeping' => 'integer|min:1|max:100',

@@ -10,7 +10,7 @@ trait RecordsMatchEvents
      * @param int $team Team number (1 or 2)
      * @param int $time Current match time
      * @param array $matchData Match data array (passed by reference)
-     * @param string $type Goal type: 'goal', 'penalty', 'freekick', 'own_goal'
+     * @param string $type Goal type: 'goal', 'penalty', 'freekick'
      * @return void
      */
     protected function recordGoal(int $team, int $time, array &$matchData, string $type = 'goal'): void
@@ -24,7 +24,6 @@ trait RecordsMatchEvents
         $suffix = match ($type) {
             'penalty' => ' (P)',
             'freekick' => ' (F)',
-            'own_goal' => ' (OG)',
             default => '',
         };
 
@@ -38,7 +37,6 @@ trait RecordsMatchEvents
         $eventLabel = match ($type) {
             'penalty' => 'Penalty GOAL',
             'freekick' => 'Free Kick GOAL',
-            'own_goal' => 'OWN GOAL',
             default => 'GOAL',
         };
         

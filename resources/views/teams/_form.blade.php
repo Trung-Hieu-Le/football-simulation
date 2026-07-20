@@ -1,5 +1,5 @@
 @php
-    $stats = ['attack','defense','control','creative','pace','mental','discipline','luck','stamina','goalkeeping'];
+    $stats = ['attack','defense','control','creative','pace','mental','physical','luck','stamina','goalkeeping'];
 @endphp
 <div class="row g-3">
     <div class="col-md-6">

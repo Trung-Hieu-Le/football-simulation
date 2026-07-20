@@ -66,11 +66,18 @@ class PenaltyShootoutService extends BaseSimulationService
 
     protected function takePenaltyShot($attacking, $defending): int
     {
-        $attackPower = ($attacking->attack ?? 50) + (($attacking->mental ?? 50) * 0.1);
-        $defensePower = ($defending->defense ?? 50) + (($defending->mental ?? 50) * 0.1);
-
-        $successChance = $attackPower / ($attackPower + $defensePower);
-
-        return rand(1, 100) <= ($successChance * 100) ? 1 : 0;
+        $shooterStats = [
+            'attack' => $attacking->attack ?? 50,
+            'mental' => $attacking->mental ?? 50,
+        ];
+        
+        $keeperStats = [
+            'goalkeeping' => $defending->goalkeeping ?? 50,
+            'mental' => $defending->mental ?? 50,
+        ];
+        
+        $result = PenaltyCalculator::attempt($shooterStats, $keeperStats, PenaltyCalculator::CONTEXT_SHOOTOUT);
+        
+        return $result['success'] ? 1 : 0;
     }
 }

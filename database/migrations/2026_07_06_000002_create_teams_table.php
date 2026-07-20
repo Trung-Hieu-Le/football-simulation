@@ -22,7 +22,7 @@ return new class extends Migration
             $table->integer('creative')->default(50);
             $table->integer('pace')->default(50);
             $table->integer('mental')->default(50);
-            $table->integer('discipline')->default(50);
+            $table->integer('physical')->default(50);
             $table->integer('luck')->default(50);
             $table->integer('stamina')->default(50);
             $table->integer('goalkeeping')->default(50);

@@ -40,14 +40,15 @@ class SituationProcessor extends BaseSimulationService
     ): array {
         $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
         $defendingStats = $currentTeam == 1 ? $team2Stats : $team1Stats;
+        $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
 
         $foulThreshold = $this->foulHandler->calculateFoulThreshold(
-            $defendingStats['discipline'],
+            $defendingStats,
             $modifiers
         );
 
         if (rand(1, 100) <= $foulThreshold) {
-            return $this->foulHandler->handleFoul(
+            $result = $this->foulHandler->handleFoul(
                 $fieldPosition,
                 $currentTeam,
                 $team1Stats,
@@ -58,6 +59,11 @@ class SituationProcessor extends BaseSimulationService
                 $matchData,
                 $modifiers
             );
+
+            return $this->tag($result, 'foul', [
+                'foul_threshold' => round($foulThreshold, 2),
+                'zone_from' => $fieldPosition,
+            ]);
         }
 
         $moveResult = $this->buildUpHandler->moveBall(
@@ -70,37 +76,54 @@ class SituationProcessor extends BaseSimulationService
             $modifiers
         );
 
-        if ($moveResult['stolen']) {
-            $counterResult = $this->counterHandler->attemptCounterAttack(
-                $moveResult['newPosition'],
-                $currentTeam,
-                $currentTeam == 1 ? $team1Stats : $team2Stats,
-                $currentTeam == 1 ? $team2Stats : $team1Stats,
-                $modifiers
-            );
+        $buildEvent = $moveResult['event'] ?? 'move';
+        $buildDetail = $moveResult['detail'] ?? [];
 
-            if ($counterResult !== null) {
-                return $counterResult;
+        if ($moveResult['stolen']) {
+            // Turnover events: pressing, miscontrol, contest, offside, move_lost, aerial_lost
+            // Counter only eligible on: pressing, contest (not miscontrol/offside)
+            $counterEligible = in_array($buildEvent, ['pressing', 'contest', 'move_lost']);
+            
+            if ($counterEligible) {
+                $counterResult = $this->counterHandler->attemptCounterAttack(
+                    $moveResult['newPosition'],
+                    $currentTeam,
+                    $attackingStats,
+                    $defendingStats,
+                    $modifiers
+                );
+
+                if ($counterResult !== null) {
+                    return $this->tag($counterResult, 'counter_attack', array_merge($buildDetail, [
+                        'after' => $buildEvent,
+                        'zone_from' => $fieldPosition,
+                        'zone_after_steal' => $moveResult['newPosition'],
+                    ]));
+                }
             }
 
-            return [
+            return $this->tag([
                 'fieldPosition' => $moveResult['newPosition'],
                 'currentTeam' => $currentTeam == 1 ? 2 : 1,
                 'goal' => false,
-            ];
+            ], $buildEvent ?: 'possession_lost', array_merge($buildDetail, [
+                'zone_from' => $fieldPosition,
+                'zone_to' => $moveResult['newPosition'],
+                'stolen' => true,
+            ]));
         }
 
         if (in_array($moveResult['newPosition'], FieldPositions::SHOOTING_POSITIONS)) {
-            $attackingStats = $currentTeam == 1 ? $team1Stats : $team2Stats;
             $shotDecisionChance = $this->shotDecisionChance(
                 $moveResult['newPosition'],
                 $attackingStats['attack'],
                 $attackingStats['mental'],
-                $modifiers
+                $modifiers,
+                $currentTeam
             );
 
             if (rand(1, 100) <= $shotDecisionChance) {
-                return $this->shotHandler->handleShot(
+                $shotResult = $this->shotHandler->handleShot(
                     $moveResult['newPosition'],
                     $currentTeam,
                     $team1Stats,
@@ -112,13 +135,46 @@ class SituationProcessor extends BaseSimulationService
                     false,
                     $modifiers
                 );
+
+                $shotEvent = ($shotResult['goal'] ?? false) ? 'goal' : 'shot';
+
+                return $this->tag($shotResult, $shotEvent, array_merge($buildDetail, [
+                    'via' => $buildEvent ?: 'move',
+                    'zone_from' => $fieldPosition,
+                    'zone_shot' => $moveResult['newPosition'],
+                    'shot_decision_chance' => round($shotDecisionChance, 2),
+                    'shot_detail' => $shotResult['detail'] ?? [],
+                ]));
             }
+
+            return $this->tag([
+                'fieldPosition' => $moveResult['newPosition'],
+                'currentTeam' => $currentTeam,
+                'goal' => false,
+            ], $buildEvent === 'contest_held' ? 'contest_held' : 'move_no_shot', array_merge($buildDetail, [
+                'zone_from' => $fieldPosition,
+                'zone_to' => $moveResult['newPosition'],
+                'shot_decision_chance' => round($shotDecisionChance, 2),
+                'shot_attempted' => false,
+            ]));
         }
 
-        return [
+        return $this->tag([
             'fieldPosition' => $moveResult['newPosition'],
             'currentTeam' => $currentTeam,
             'goal' => false,
-        ];
+        ], $buildEvent ?: 'move', array_merge($buildDetail, [
+            'zone_from' => $fieldPosition,
+            'zone_to' => $moveResult['newPosition'],
+            'stolen' => false,
+        ]));
+    }
+
+    protected function tag(array $result, string $event, array $detail = []): array
+    {
+        $result['event'] = $event;
+        $result['detail'] = $detail;
+
+        return $result;
     }
 }

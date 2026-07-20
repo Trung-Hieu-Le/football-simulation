@@ -19,65 +19,96 @@ php8.2 artisan serve
 
 Mở http://localhost:8000
 
+> **DB đã tồn tại từ trước rename `discipline` → `physical`:** chạy `php8.2 artisan migrate` (migration rename idempotent). Fresh install dùng cột `physical` từ đầu.
+
+## Team stats (10)
+
+`attack`, `defense`, `control`, `creative`, `pace`, `mental`, **`physical`**, `luck`, `stamina`, `goalkeeping`
+
+- **physical**: contest, aerial, pressing strength; physical cao + defense thấp → dễ foul hơn
+- **defense**: chặn tiến bóng, giảm foul, offside trap, save
+
 ## Chạy tests
 
 ### Unit tests (không cần database)
 
-Chạy toàn bộ unit tests:
-
 ```bash
 php8.2 artisan test --testsuite=Unit
-```
-
-Hoặc dùng PHPUnit trực tiếp:
-
-```bash
+# hoặc
 php8.2 vendor/bin/phpunit --testsuite=Unit
 ```
 
-**Các test hiện có:**
-
 | File | Nội dung |
 |------|----------|
-| `tests/Unit/RoundRobinServiceTest.php` | Lịch round-robin single leg (4 và 8 đội/group) |
-| `tests/Unit/CupPotSeedingServiceTest.php` | Chia pot + 8 groups A–H (32 và 64 teams) |
-| `tests/Unit/CupKnockoutServiceTest.php` | BRANCHES_32, thứ tự round knockout |
+| `tests/Unit/ZoneHelpersTest.php` | Zone mirror 0–2 ↔ 8–10, shot bonus, midfield weight |
+| `tests/Unit/BuildUpHandlerTest.php` | `moveBall` structure + bounds |
+| `tests/Unit/ShotHandlerTest.php` | Clutch shot timing; OwnGoal đã bỏ |
+| `tests/Unit/PenaltyCalculatorTest.php` | Shared penalty on-target / goal chance |
+| `tests/Unit/MetaModifiersTest.php` | 8 meta + legacy map |
+| `tests/Unit/RoundRobinServiceTest.php` | Lịch round-robin |
+| `tests/Unit/CupPotSeedingServiceTest.php` | Pot + groups |
+| `tests/Unit/CupKnockoutServiceTest.php` | Knockout branch order |
+| `tests/Unit/EloRatingServiceTest.php` | ELO |
+| `tests/Unit/MatchEventNormalizerTest.php` | Match events payload |
 
-### Integration test (cần MySQL + đủ teams trong DB)
-
-Sau `migrate:fresh --seed` (cần ít nhất 32 teams, seeder có 64):
+Chạy một file:
 
 ```bash
-# Test cup 32 teams
-php8.2 artisan cup:self-test --teams=32
+php8.2 artisan test --filter=ZoneHelpersTest
+php8.2 artisan test tests/Unit/PenaltyCalculatorTest.php
+```
 
-# Test cup 64 teams
+### Balance predict script (không cần DB)
+
+Ước lượng % công thức ở “midpoint” (giả sử `rand ≈ 50`) để soi move / foul / shot / goal **trước** khi sim trận thật. Không thay thế unit test và không chạy full match.
+
+```bash
+php8.2 scripts/predict_midpoint_balance.php
+php8.2 scripts/predict_midpoint_balance.php | jq '.[0].chances_pct'
+php8.2 scripts/predict_midpoint_balance.php | jq '.[0].diagnosis'
+```
+
+Output JSON gồm vài cặp attacker/defender (90 vs 88, gap 90 vs 80, …) và `diagnosis` flags (`goal_conversion_high`, `zone_mirror_ok`, …).
+
+**Khi nào dùng:** sau khi sửa `SimulationConstants`, `StatsWeights`, `ZoneHelpers`, hoặc `MetaModifiers`.
+
+### Integration test (cần MySQL + đủ teams)
+
+Sau `migrate:fresh --seed` (≥ 32 teams):
+
+```bash
+php8.2 artisan cup:self-test --teams=32
 php8.2 artisan cup:self-test --teams=64
 ```
 
-Lệnh chạy trong transaction và **rollback** — không để lại data test.
+Chạy trong transaction rồi **rollback** — không để lại data.
 
 ### Feature tests
 
-Feature tests mặc định cần database. Bật SQLite in-memory trong `phpunit.xml` nếu máy có `pdo_sqlite`:
-
-```xml
-<env name="DB_CONNECTION" value="sqlite"/>
-<env name="DB_DATABASE" value=":memory:"/>
-```
-
-Rồi chạy:
+Cần database. Có thể bật SQLite in-memory trong `phpunit.xml` nếu có `pdo_sqlite`, rồi:
 
 ```bash
 php8.2 artisan test
 ```
 
+## Điều chỉnh số bàn thắng (goals)
+
+| Muốn | Sửa ở đâu |
+|------|-----------|
+| Ít / nhiều cơ hội sút | `SimulationConstants::SHOOT_DECISION_*`, `ZoneHelpers::SHOT_BONUS_BY_DISTANCE` |
+| Khó tiến vào box | `ZoneHelpers::PROGRESS_DIFFICULTY_BY_DISTANCE` |
+| On-target | `NORMAL_SHOT_ON_TARGET_CHANCE`, `SHOT_ATTACK_BONUS_MULTIPLIER` |
+| Conversion (bàn từ OT) | `StatsWeights::SHOT_POWER_*` / `SAVE_POWER_*` |
+| Meta | `MetaModifiers` key `shot_decision`, `counter_*` |
+
+Single source zone: **`ZoneHelpers`** (không còn bảng zone trong `StatsWeights`).
+
 ## Cup mode — flow thủ công
 
 1. `/cup/seasons/create` — chọn 32 hoặc 64 đội
 2. Simulate group stage → **Advance to Knockout**
-3. `/cup/seasons/{id}/eliminate` — bracket tree, simulate từng vòng
-4. Thứ tự knockout: R16 → QF → Round of 8 → SF → **Third place** → **Final**
+3. `/cup/seasons/{id}/eliminate` — bracket, simulate từng vòng
+4. Thứ tự: R16 → QF → Round of 8 → SF → **Third place** → **Final**
 
 Chi tiết nghiệp vụ: xem `PLAN.md` mục 11.
 

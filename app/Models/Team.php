@@ -21,7 +21,7 @@ class Team extends Model
         'creative',
         'pace',
         'mental',
-        'discipline',
+        'physical',
         'luck',
         'stamina',
         'goalkeeping',
@@ -39,7 +39,7 @@ class Team extends Model
         'creative' => 50,
         'pace' => 50,
         'mental' => 50,
-        'discipline' => 50,
+        'physical' => 50,
         'luck' => 50,
         'stamina' => 50,
         'goalkeeping' => 50,
@@ -53,7 +53,7 @@ class Team extends Model
 
     public function getTotalStatsAttribute(): int
     {
-        $stats = ['attack', 'defense', 'control', 'creative', 'pace', 'mental', 'discipline', 'luck', 'stamina', 'goalkeeping'];
+        $stats = ['attack', 'defense', 'control', 'creative', 'pace', 'mental', 'physical', 'luck', 'stamina', 'goalkeeping'];
 
         return collect($stats)->sum(function ($stat) {
             return (int) ($this->attributes[$stat] ?? $this->{$stat} ?? 0);

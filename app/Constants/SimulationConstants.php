@@ -16,49 +16,41 @@ class SimulationConstants
     public const EXTRATIME_START_SITUATION = self::TOTAL_SITUATIONS_FULLTIME + 1; // 271
     public const EXTRATIME_HALFTIME_START_SITUATION = self::EXTRATIME_HALFTIME_SITUATION + 1; // 316
 
-    // Stamina & fatigue
-    public const STAMINA_FACTOR_BASE = 0.5;
-    public const STAMINA_DIVISOR = 200;
+    // Stamina phase decay
     public const HALF_1_DECAY = 0.05;
     public const HALF_2_DECAY = 0.12;
     public const EXTRA_1_DECAY = 0.20;
     public const EXTRA_2_DECAY = 0.30;
 
     // Base chances
-    public const BASE_SHOT_CHANCE = 8;
-    public const BASE_FOUL_CHANCE = 7;
+    public const BASE_FOUL_CHANCE = 4;
     public const BASE_PENALTY_GOAL = 78;
-    public const BASE_SPECIAL_EVENT = 6;
+    public const BASE_SPECIAL_EVENT = 5;
 
     // Foul
-    public const FOUL_DISCIPLINE_DIVISOR = 50;
-    public const FOUL_CHANCE_MIN = 3;
-    public const FOUL_CHANCE_MAX = 12;
-    public const PENALTY_CHANCE = 40; // % penalty when foul at position 1 or 9
+    public const FOUL_CHANCE_MIN = 1.5;
+    public const FOUL_CHANCE_MAX = 7;
+    public const PENALTY_CHANCE = 35;
 
-    // Shot decision — attack primary, mental has noticeable secondary effect
-    public const SHOOT_DECISION_BASE_CHANCE = 8;
-    public const SHOOT_DECISION_ATTACK_MULTIPLIER = 0.22;
-    public const SHOOT_DECISION_MENTAL_MULTIPLIER = 0.08;  // Increased from 0.06 for more noticeable mental impact
-    public const SHOOT_DECISION_MAX = 55;
+    // Shot decision
+    public const SHOOT_DECISION_BASE_CHANCE = 4;
+    public const SHOOT_DECISION_ATTACK_MULTIPLIER = 0.16;
+    public const SHOOT_DECISION_MENTAL_MULTIPLIER = 0.06;
+    public const SHOOT_DECISION_MAX = 38;
 
-    // Shot & scoring
-    public const NORMAL_SHOT_GOAL_CHANCE = 30;
-    public const NORMAL_SHOT_ON_TARGET_CHANCE = 40;
-    public const SHOT_ATTACK_BONUS_MULTIPLIER = 0.3;
-    public const SHOT_ON_TARGET_MIN = 15;
-    public const SHOT_ON_TARGET_MAX = 90;
+    // Shot on-target
+    public const NORMAL_SHOT_ON_TARGET_CHANCE = 18;
+    public const SHOT_ATTACK_BONUS_MULTIPLIER = 0.42;
+    public const SHOT_ON_TARGET_MIN = 12;
+    public const SHOT_ON_TARGET_MAX = 72;
 
-    // Penalty
-    public const PENALTY_GOAL_CHANCE = 70;
-    public const PENALTY_ON_TARGET_CHANCE = 80;
+    // Penalty (PenaltyCalculator)
     public const PENALTY_ON_TARGET_MIN = 70;
     public const PENALTY_ON_TARGET_MAX = 95;
     public const PENALTY_ATTACK_BONUS_MULTIPLIER = 0.1;
     public const PENALTY_MENTAL_BONUS_MULTIPLIER = 0.15;
 
     // Free kick
-    public const FREE_KICK_GOAL_CHANCE = 5;
     public const FREE_KICK_SHOT_CHANCE = 25;
     public const FREE_KICK_ON_TARGET_CHANCE = 25;
     public const FREEKICK_ON_TARGET_MIN = 5;
@@ -66,25 +58,17 @@ class SimulationConstants
     public const FREEKICK_PASS_DISTANCE_MIN = 1;
     public const FREEKICK_PASS_DISTANCE_MAX = 3;
 
-    // Movement
+    // Movement — normal +1; long_ball / pace_boost +2; long_ball meta + creative +3
     public const MOVE_DISTANCE_NORMAL = 1;
     public const MOVE_DISTANCE_FAST = 2;
-    public const SPEED_THRESHOLD = 70;
-    public const CREATIVE_BONUS_CHANCE = 15; // % chance move +2
-    public const DIFFICULTY_FACTOR_MULTIPLIER = 0.3;
+    public const MOVE_DISTANCE_LONG_BALL = 3;
 
-    // Counter attack
-    public const COUNTER_ATTACK_CHANCE = 15;
-    public const COUNTER_MOVE_DISTANCE = 2;
-    public const COUNTER_AFTER_SHOT_CHANCE = 30;
-    public const COUNTER_STEAL_CHANCE = 50;
+    // Counter attack — random 1–4, pace biases toward longer runs
+    public const COUNTER_AFTER_SHOT_CHANCE = 22;
+    public const COUNTER_STEAL_CHANCE = 35;
     public const COUNTER_DISTANCE_MIN = 1;
-    public const COUNTER_DISTANCE_MAX = 5;
-    public const COUNTER_DISTANCE_DIVISOR = 20;
+    public const COUNTER_DISTANCE_MAX = 4;
 
-    // Special events
+    // Special events / luck
     public const SPECIAL_EVENT_LUCK_MULTIPLIER = 0.12;
-
-    // Pressing & pace
-    public const PACE_PRESSING_MULTIPLIER = 0.5;
 }

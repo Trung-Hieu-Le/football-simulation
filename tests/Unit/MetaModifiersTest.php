@@ -25,8 +25,8 @@ class MetaModifiersTest extends TestCase
     {
         $modifiers = MetaModifiers::for('tiki-taka');
 
-        $this->assertSame(1.20, MetaModifiers::for(SeasonMeta::POSSESSION->value)['move_chance']);
-        $this->assertSame(1.20, $modifiers['move_chance']);
+        $this->assertSame(1.15, MetaModifiers::for(SeasonMeta::POSSESSION->value)['move_chance']);
+        $this->assertSame(1.15, $modifiers['move_chance']);
     }
 
     public function test_high_press_has_higher_pressing_than_low_block(): void

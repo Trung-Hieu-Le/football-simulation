@@ -15,7 +15,7 @@ class MatchSimulator extends BaseSimulationService
         $this->situationProcessor = new SituationProcessor();
     }
 
-    public function simulateMatch($team1, $team2, string $seasonMeta, bool $requireWinner = false): array
+    public function simulateMatch($team1, $team2, string $seasonMeta, bool $requireWinner = false, bool $debug = true): array
     {
         $matchData = [
             'team1_id' => $team1->id,
@@ -34,6 +34,9 @@ class MatchSimulator extends BaseSimulationService
             'team2_shots_on_target' => 0,
             'goals' => [],
             'specialEvents' => [],
+            'debug' => $debug,
+            'debug_log' => [],
+            'season_meta' => $seasonMeta,
         ];
 
         $this->simulateFullTime($team1, $team2, $seasonMeta, $matchData);
@@ -46,6 +49,10 @@ class MatchSimulator extends BaseSimulationService
         if ($totalPossession > 0) {
             $matchData['team1_possession'] = (int)(($matchData['team1_possession'] / $totalPossession) * 100);
             $matchData['team2_possession'] = 100 - $matchData['team1_possession'];
+        }
+
+        if ($debug) {
+            $matchData['debug_summary'] = SimulationDebugLog::summarize($matchData);
         }
 
         return $matchData;
@@ -119,6 +126,9 @@ class MatchSimulator extends BaseSimulationService
                 $matchData['team2_possession']++;
             }
 
+            $zoneBefore = $fieldPosition;
+            $teamBefore = $currentTeam;
+
             $result = $this->situationProcessor->processSituation(
                 $fieldPosition,
                 $currentTeam,
@@ -133,6 +143,22 @@ class MatchSimulator extends BaseSimulationService
 
             $fieldPosition = $result['fieldPosition'];
             $currentTeam = $result['currentTeam'];
+
+            SimulationDebugLog::push($matchData, [
+                'situation' => $situation,
+                'minute' => $time,
+                'half' => $isExtraTime
+                    ? ($isSecondHalf ? 'ET2' : 'ET1')
+                    : ($isSecondHalf ? 'H2' : 'H1'),
+                'possession' => $teamBefore,
+                'zone' => $zoneBefore,
+                'zone_after' => $fieldPosition,
+                'possession_after' => $currentTeam,
+                'event' => $result['event'] ?? 'unknown',
+                'goal' => (bool) ($result['goal'] ?? false),
+                'score' => ($matchData['team1_score'] ?? 0) . '-' . ($matchData['team2_score'] ?? 0),
+                'detail' => $result['detail'] ?? [],
+            ]);
 
             if ($result['goal'] ?? false) {
                 $fieldPosition = FieldPositions::MIDFIELD;

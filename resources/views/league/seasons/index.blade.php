@@ -5,7 +5,13 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>League Seasons</h1>
-    <a href="{{ route('league.seasons.create') }}" class="btn btn-primary">Create New Season</a>
+    <div>
+        <form action="{{ route('league.seasons.destroy-all') }}" method="POST" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Delete all League seasons?')">Delete All</button>
+        </form>
+        <a href="{{ route('league.seasons.create') }}" class="btn btn-primary">Create New Season</a>
+    </div>
 </div>
 
 <div class="row">

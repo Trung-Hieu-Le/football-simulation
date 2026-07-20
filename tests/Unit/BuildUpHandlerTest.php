@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Constants\SimulationConstants;
 use App\Enums\SeasonMeta;
 use App\Services\Simulation\EventHandlers\BuildUpHandler;
 use App\Services\Simulation\MetaModifiers;
@@ -24,8 +25,10 @@ class BuildUpHandlerTest extends TestCase
             'creative' => 75,
             'stamina' => 70,
             'pace' => 75,
-            'discipline' => 80,
+            'physical' => 80,
             'defense' => 70,
+            'attack' => 75,
+            'goalkeeping' => 70,
             'luck' => 50,
         ];
     }
@@ -65,8 +68,10 @@ class BuildUpHandlerTest extends TestCase
             'creative' => 55,
             'stamina' => 55,
             'pace' => 60,
-            'discipline' => 65,
+            'physical' => 65,
             'defense' => 70,
+            'attack' => 60,
+            'goalkeeping' => 65,
             'luck' => 50,
         ];
         $matchData = ['specialEvents' => []];
@@ -85,5 +90,21 @@ class BuildUpHandlerTest extends TestCase
         $lowBlock = MetaModifiers::for(SeasonMeta::LOW_BLOCK->value);
 
         $this->assertGreaterThan($lowBlock['pressing'], $highPress['pressing']);
+    }
+
+    public function test_successful_move_distance_between_one_and_three(): void
+    {
+        $strong = array_merge($this->sampleStats(), ['control' => 99, 'creative' => 99, 'pace' => 40]);
+        $weak = array_merge($this->sampleStats(), ['defense' => 30, 'physical' => 30]);
+        $matchData = ['specialEvents' => []];
+        $modifiers = MetaModifiers::for(SeasonMeta::BALANCED->value);
+
+        for ($i = 0; $i < 30; $i++) {
+            $result = $this->handler->moveBall(3, 1, $strong, $weak, 45, $matchData, $modifiers);
+            if (!$result['stolen'] && isset($result['detail']['distance'])) {
+                $this->assertGreaterThanOrEqual(1, $result['detail']['distance']);
+                $this->assertLessThanOrEqual(SimulationConstants::MOVE_DISTANCE_LONG_BALL, $result['detail']['distance']);
+            }
+        }
     }
 }

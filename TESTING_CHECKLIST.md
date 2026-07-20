@@ -21,7 +21,7 @@ php artisan db:seed
 ### Teams Management ✅
 - [ ] Truy cập `/teams`
 - [ ] View danh sách 64 teams
-- [ ] Edit team stats (attack, defense, control, creative, pace, mental, discipline, luck, stamina, goalkeeping)
+- [ ] Edit team stats (attack, defense, control, creative, pace, mental, physical, luck, stamina, goalkeeping)
 - [ ] Verify ELO default = 1000
 - [ ] Form default = 50
 - [ ] Test "Reset All ELO" button → all teams ELO = 1000

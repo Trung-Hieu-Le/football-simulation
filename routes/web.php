@@ -30,6 +30,7 @@ Route::prefix('league')->name('league.')->group(function () {
     Route::post('/seasons', [LeagueSeasonController::class, 'store'])->name('seasons.store');
     Route::get('/seasons/{id}', [LeagueSeasonController::class, 'show'])->name('seasons.show');
     Route::delete('/seasons/{id}', [LeagueSeasonController::class, 'destroy'])->name('seasons.destroy');
+    Route::post('/seasons/destroy-all', [LeagueSeasonController::class, 'destroyAll'])->name('seasons.destroy-all');
     Route::post('/seasons/{id}/calculate-results', [LeagueSeasonController::class, 'calculateResults'])->name('seasons.calculate-results');
 
     Route::get('/seasons/{seasonId}/matches', [LeagueMatchController::class, 'index'])->name('matches.index');
@@ -48,6 +49,7 @@ Route::prefix('cup')->name('cup.')->group(function () {
     Route::post('/seasons', [CupSeasonController::class, 'store'])->name('seasons.store');
     Route::get('/seasons/{id}', [CupSeasonController::class, 'show'])->name('seasons.show');
     Route::delete('/seasons/{id}', [CupSeasonController::class, 'destroy'])->name('seasons.destroy');
+    Route::post('/seasons/destroy-all', [CupSeasonController::class, 'destroyAll'])->name('seasons.destroy-all');
     Route::post('/seasons/{id}/advance-knockout', [CupSeasonController::class, 'advanceToKnockout'])->name('seasons.advance-knockout');
 
     Route::get('/seasons/{seasonId}/matches', [CupMatchController::class, 'index'])->name('matches.index');

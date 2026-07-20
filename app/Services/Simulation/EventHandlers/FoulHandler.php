@@ -20,12 +20,30 @@ class FoulHandler extends BaseSimulationService
     }
 
     /**
-     * Calculate foul threshold based on discipline
+     * Calculate foul threshold
+     * Physical high + defense low = more fouls (aggressive without technique)
+     * Defense + luck = fewer fouls
      */
-    public function calculateFoulThreshold(float $discipline, array $modifiers = []): float
+    public function calculateFoulThreshold(array $defendingStats, array $modifiers = []): float
     {
         $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
-        $foulThreshold = SimulationConstants::BASE_FOUL_CHANCE - ($discipline * 0.08);
+        
+        $physical = $defendingStats['physical'];
+        $defense = $defendingStats['defense'];
+        $luck = $defendingStats['luck'];
+        
+        $baseChance = SimulationConstants::BASE_FOUL_CHANCE;
+        
+        // Physical-defense gap: high physical + low defense = more fouls
+        $physicalDefenseGap = max(0, ($physical - $defense) * 0.03);
+        
+        // Defense reduces fouls (technique)
+        $defenseReduce = ($defense - 70) * 0.08;
+        
+        // Luck reduces fouls slightly
+        $luckReduce = $this->specialEventChance($luck) * 0.22;
+        
+        $foulThreshold = $baseChance + $physicalDefenseGap - $defenseReduce - $luckReduce;
         $foulThreshold *= $modifiers['foul_chance'];
 
         return $this->clamp($foulThreshold, SimulationConstants::FOUL_CHANCE_MIN, SimulationConstants::FOUL_CHANCE_MAX);

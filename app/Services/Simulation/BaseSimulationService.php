@@ -3,8 +3,8 @@
 namespace App\Services\Simulation;
 
 use App\Constants\SimulationConstants;
-use App\Constants\FieldPositions;
 use App\Constants\StatsWeights;
+use App\Services\Simulation\MetaModifiers;
 
 class BaseSimulationService
 {
@@ -29,7 +29,7 @@ class BaseSimulationService
             'creative' => $team->creative ?? 50,
             'pace' => $team->pace ?? 50,
             'mental' => $team->mental ?? 50,
-            'discipline' => $team->discipline ?? 50,
+            'physical' => $team->physical ?? 50,
             'luck' => $team->luck ?? 50,
             'stamina_factor' => $staminaFactor,
         ];
@@ -50,24 +50,12 @@ class BaseSimulationService
         return $isSecondHalf ? SimulationConstants::HALF_2_DECAY : SimulationConstants::HALF_1_DECAY;
     }
 
-    public function possessionPower(array $stats): float
+    /**
+     * @param int $team Attacking team (1 or 2) — required for zone symmetry
+     */
+    public function shotDecisionChance(int $zone, float $attack, float $mental, array $modifiers = [], int $team = 1): float
     {
-        return ($stats['control'] * StatsWeights::POSSESSION_CONTROL_WEIGHT)
-             + ($stats['stamina'] * StatsWeights::POSSESSION_STAMINA_WEIGHT)
-             + ($stats['mental'] * StatsWeights::POSSESSION_MENTAL_WEIGHT);
-    }
-
-    public function stealPower(array $stats): float
-    {
-        return ($stats['defense'] * StatsWeights::STEAL_DEFENSE_WEIGHT)
-             + ($stats['pace'] * StatsWeights::STEAL_PACE_WEIGHT)
-             + ($stats['discipline'] * StatsWeights::STEAL_DISCIPLINE_WEIGHT);
-    }
-
-    public function shotDecisionChance(int $zone, float $attack, float $mental, array $modifiers = []): float
-    {
-        $zoneBonus = StatsWeights::ZONE_SHOT_BONUS[$zone] ??
-                     (($zone === FieldPositions::GOAL_TEAM1 || $zone === FieldPositions::GOAL_TEAM2) ? 30 : 0);
+        $zoneBonus = ZoneHelpers::shotBonus($zone, $team);
 
         $chance = SimulationConstants::SHOOT_DECISION_BASE_CHANCE
             + $zoneBonus
@@ -103,6 +91,47 @@ class BaseSimulationService
     {
         return SimulationConstants::BASE_SPECIAL_EVENT
              + ($luck * SimulationConstants::SPECIAL_EVENT_LUCK_MULTIPLIER);
+    }
+
+    /**
+     * Random counter distance 1–4; higher pace shifts weight toward longer runs.
+     */
+    public function calculateCounterDistance(array $stats, array $modifiers = []): int
+    {
+        $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
+        $pace = $this->clamp($stats['pace'] ?? 50, 40, 100);
+        $bias = ($pace - 40) / 60;
+
+        $weights = [
+            1 => max(1, 45 - ($bias * 35)),
+            2 => max(1, 30 - ($bias * 10)),
+            3 => max(1, 18 + ($bias * 22)),
+            4 => max(1, 7 + ($bias * 28)),
+        ];
+
+        if (($modifiers['counter_distance'] ?? 1.0) > 1.0) {
+            $metaBoost = $modifiers['counter_distance'];
+            $weights[3] *= $metaBoost;
+            $weights[4] *= $metaBoost;
+        }
+
+        $scaled = [];
+        foreach ($weights as $distance => $weight) {
+            $scaled[$distance] = max(1, (int) round($weight * 10));
+        }
+
+        $total = array_sum($scaled);
+        $pick = mt_rand(1, $total);
+        $cursor = 0;
+
+        foreach ($scaled as $distance => $weight) {
+            $cursor += $weight;
+            if ($pick <= $cursor) {
+                return (int) $distance;
+            }
+        }
+
+        return SimulationConstants::COUNTER_DISTANCE_MAX;
     }
 
     public function getKickoffTeam(int $situation, bool $isExtraTime = false): int

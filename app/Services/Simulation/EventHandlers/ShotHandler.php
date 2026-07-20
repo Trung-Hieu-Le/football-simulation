@@ -8,14 +8,15 @@ use App\Constants\StatsWeights;
 use App\Services\Simulation\BaseSimulationService;
 use App\Services\Simulation\Concerns\RecordsMatchEvents;
 use App\Services\Simulation\MetaModifiers;
+use App\Services\Simulation\PenaltyCalculator;
+use App\Services\Simulation\ZoneHelpers;
 
 class ShotHandler extends BaseSimulationService
 {
     use RecordsMatchEvents;
 
     // Special shot event constants
-    public const CLUTCH_SHOT_BASE_CHANCE = 3;  // Base chance for clutch shot in last minutes
-    public const OWN_GOAL_BASE_CHANCE = 1;     // Base chance for own goal
+    public const CLUTCH_SHOT_BASE_CHANCE = 3;  // Base chance for clutch shot in last minutes when trailing
 
     public function handleShot(
         int $fieldPosition,
@@ -37,23 +38,22 @@ class ShotHandler extends BaseSimulationService
             return $this->handlePenaltyShot($currentTeam, $attackingStats, $defendingStats, $time, $matchData);
         }
 
-        $distance = $this->calculateDistanceToGoal($fieldPosition, $currentTeam);
+        $distance = ZoneHelpers::attackDistance($fieldPosition, $currentTeam);
         
-        $onTargetChance = $this->calculateOnTargetChance($distance, $attackingStats['attack']);
+        $onTargetChance = $this->calculateOnTargetChance(
+            $distance,
+            $attackingStats['attack'],
+            $defendingStats['defense']
+        );
         $onTarget = rand(1, 100) <= $onTargetChance;
 
         $this->recordShot($currentTeam, $matchData, $onTarget);
 
-        // Check for own goal (rare defensive error in penalty area)
-        if ($this->tryOwnGoal($fieldPosition, $defendingStats['discipline'], $defendingStats['luck'])) {
-            $this->recordGoal($currentTeam, $time, $matchData, 'own_goal');
-            return [
-                'fieldPosition' => FieldPositions::MIDFIELD,
-                'currentTeam' => $currentTeam == 1 ? 2 : 1,
-                'goal' => true,
-                'goalScoredBy' => $currentTeam,
-            ];
-        }
+        $detail = [
+            'distance' => $distance,
+            'on_target_chance' => round($onTargetChance, 2),
+            'on_target' => $onTarget,
+        ];
 
         if ($onTarget) {
             $goalChance = $this->shotGoalChance(
@@ -64,12 +64,20 @@ class ShotHandler extends BaseSimulationService
                 $defendingStats['mental']
             ) * 100;
 
-            // Clutch shot bonus in last minutes
-            if ($this->rollClutchShot($time, $attackingStats['mental'], $attackingStats['luck'], $modifiers)) {
-                $goalBoost = 1.0 + (0.3 * $modifiers['clutch_goal']);
-                $goalChance = min(95, $goalChance * $goalBoost);
+            // Clutch shot: only when team is trailing
+            $currentScore = $currentTeam == 1 ? $matchData['team1_score'] : $matchData['team2_score'];
+            $opponentScore = $currentTeam == 1 ? $matchData['team2_score'] : $matchData['team1_score'];
+            $isTrailing = $currentScore < $opponentScore;
+            
+            $clutch = $isTrailing && $this->rollClutchShot($time, $attackingStats['mental'], $attackingStats['luck'], $modifiers);
+            if ($clutch) {
+                $goalBoost = 1.0 + (0.4 * $modifiers['clutch_goal']);
+                $goalChance = min(88, $goalChance * $goalBoost);
                 $this->recordTimelineEvent($time, "Clutch shot by Team{$currentTeam}!", $matchData);
             }
+
+            $detail['goal_chance'] = round($goalChance, 2);
+            $detail['clutch'] = $clutch;
 
             $isGoal = rand(1, 100) <= $goalChance;
 
@@ -80,60 +88,58 @@ class ShotHandler extends BaseSimulationService
                     'currentTeam' => $currentTeam == 1 ? 2 : 1,
                     'goal' => true,
                     'goalScoredBy' => $currentTeam,
+                    'detail' => array_merge($detail, ['outcome' => 'goal']),
                 ];
             }
 
             // Shot on target but saved - 30% counter chance
             if (rand(1, 100) <= SimulationConstants::COUNTER_AFTER_SHOT_CHANCE) {
-                return $this->counterAttack($fieldPosition, $currentTeam, $defendingStats);
+                $counter = $this->counterAttack($fieldPosition, $currentTeam, $defendingStats, $modifiers);
+                $counter['detail'] = array_merge($detail, ['outcome' => 'saved_then_counter']);
+                return $counter;
             }
-        } else {
-            // Shot off target - 50% steal chance
-            if (rand(1, 100) <= SimulationConstants::COUNTER_STEAL_CHANCE) {
-                $newTeam = $currentTeam == 1 ? 2 : 1;
-                return [
-                    'fieldPosition' => $fieldPosition,
-                    'currentTeam' => $newTeam,
-                    'goal' => false,
-                ];
-            }
+
+            return [
+                'fieldPosition' => $fieldPosition,
+                'currentTeam' => $currentTeam,
+                'goal' => false,
+                'detail' => array_merge($detail, ['outcome' => 'saved']),
+            ];
+        }
+
+        // Shot off target - 50% steal chance
+        if (rand(1, 100) <= SimulationConstants::COUNTER_STEAL_CHANCE) {
+            $newTeam = $currentTeam == 1 ? 2 : 1;
+            return [
+                'fieldPosition' => $fieldPosition,
+                'currentTeam' => $newTeam,
+                'goal' => false,
+                'detail' => array_merge($detail, ['outcome' => 'off_target_steal']),
+            ];
         }
 
         return [
             'fieldPosition' => $fieldPosition,
             'currentTeam' => $currentTeam,
             'goal' => false,
+            'detail' => array_merge($detail, ['outcome' => 'off_target']),
         ];
     }
 
     protected function handlePenaltyShot(int $currentTeam, array $attackingStats, array $defendingStats, int $time, array &$matchData): array
     {
-        $onTargetChance = SimulationConstants::BASE_PENALTY_GOAL 
-                        + ($attackingStats['attack'] * SimulationConstants::PENALTY_ATTACK_BONUS_MULTIPLIER)
-                        + ($attackingStats['mental'] * SimulationConstants::PENALTY_MENTAL_BONUS_MULTIPLIER);
-        $onTargetChance = $this->clamp($onTargetChance, SimulationConstants::PENALTY_ON_TARGET_MIN, SimulationConstants::PENALTY_ON_TARGET_MAX);
+        $result = PenaltyCalculator::attempt($attackingStats, $defendingStats, PenaltyCalculator::CONTEXT_OPEN_PLAY);
+        
+        $this->recordShot($currentTeam, $matchData, $result['on_target']);
 
-        $onTarget = rand(1, 100) <= $onTargetChance;
-        $this->recordShot($currentTeam, $matchData, $onTarget);
-
-        if ($onTarget) {
-            $penaltyShotPower = ($attackingStats['attack'] * StatsWeights::PENALTY_SHOT_ATTACK_WEIGHT)
-                              + ($attackingStats['mental'] * StatsWeights::PENALTY_SHOT_MENTAL_WEIGHT);
-            $penaltySavePower = ($defendingStats['goalkeeping'] * StatsWeights::PENALTY_SAVE_GOALKEEPING_WEIGHT)
-                              + ($defendingStats['mental'] * StatsWeights::PENALTY_SAVE_MENTAL_WEIGHT);
-            
-            $goalChance = ($penaltyShotPower / ($penaltyShotPower + $penaltySavePower)) * 100;
-            $isGoal = rand(1, 100) <= $goalChance;
-
-            if ($isGoal) {
-                $this->recordGoal($currentTeam, $time, $matchData, 'penalty');
-                return [
-                    'fieldPosition' => FieldPositions::MIDFIELD,
-                    'currentTeam' => $currentTeam == 1 ? 2 : 1,
-                    'goal' => true,
-                    'goalScoredBy' => $currentTeam,
-                ];
-            }
+        if ($result['success']) {
+            $this->recordGoal($currentTeam, $time, $matchData, 'penalty');
+            return [
+                'fieldPosition' => FieldPositions::MIDFIELD,
+                'currentTeam' => $currentTeam == 1 ? 2 : 1,
+                'goal' => true,
+                'goalScoredBy' => $currentTeam,
+            ];
         }
 
         return [
@@ -181,22 +187,14 @@ class ShotHandler extends BaseSimulationService
         return null; // Pass after free kick miss
     }
 
-    protected function calculateDistanceToGoal(int $fieldPosition, int $currentTeam): int
-    {
-        if ($currentTeam == 1) {
-            return 10 - $fieldPosition;
-        } else {
-            return $fieldPosition;
-        }
-    }
-
-    protected function calculateOnTargetChance(int $distance, float $attack): float
+    protected function calculateOnTargetChance(int $distance, float $attack, float $defense): float
     {
         $distanceBonus = max(0, (3 - $distance)) * 5;
-        $onTargetChance = SimulationConstants::NORMAL_SHOT_ON_TARGET_CHANCE 
-                        + $distanceBonus 
-                        + ($attack * SimulationConstants::SHOT_ATTACK_BONUS_MULTIPLIER);
-        
+        $onTargetChance = SimulationConstants::NORMAL_SHOT_ON_TARGET_CHANCE
+                        + $distanceBonus
+                        + ($attack * StatsWeights::ON_TARGET_ATTACK_WEIGHT)
+                        - ($defense * StatsWeights::ON_TARGET_DEFENSE_WEIGHT);
+
         return $this->clamp($onTargetChance, SimulationConstants::SHOT_ON_TARGET_MIN, SimulationConstants::SHOT_ON_TARGET_MAX);
     }
 
@@ -212,7 +210,7 @@ class ShotHandler extends BaseSimulationService
     }
 
     /**
-     * Check for clutch shot in last minutes (85-90, 115-120)
+     * Check for clutch shot in last minutes (85-90, 115-120) when team is trailing
      * High mental stat increases chance
      */
     public function rollClutchShot(int $time, float $mental, float $luck, array $modifiers = []): bool
@@ -225,44 +223,18 @@ class ShotHandler extends BaseSimulationService
         }
 
         $baseChance = self::CLUTCH_SHOT_BASE_CHANCE * $modifiers['clutch_goal'];
-        $mentalBonus = ($mental - 70) * 0.08;
-        $luckModifier = $this->specialEventChance($luck) * 0.2;
+        $mentalBonus = ($mental - 70) * 0.10;
+        $luckModifier = $this->specialEventChance($luck) * 0.40;
 
         $chance = $baseChance + $mentalBonus + $luckModifier;
-        $chance = $this->clamp($chance, 0.5, 15);
+        $chance = $this->clamp($chance, 0.5, 18);
 
         return rand(1, 1000) <= ($chance * 10);
     }
 
-    /**
-     * Try for own goal event (rare, defender error in penalty area)
-     * Low discipline or bad luck increases chance
-     */
-    public function tryOwnGoal(int $fieldPosition, float $discipline, float $luck): bool
+    protected function counterAttack(int $fieldPosition, int $currentTeam, array $defendingStats, array $modifiers = []): array
     {
-        // Only in penalty areas (positions 1 and 9)
-        if (!in_array($fieldPosition, [1, 9])) {
-            return false;
-        }
-
-        $baseChance = self::OWN_GOAL_BASE_CHANCE;
-        $disciplineBonus = ($discipline - 70) * 0.03;
-        $luckModifier = $this->specialEventChance($luck) * 0.3;
-        
-        $chance = $baseChance - $disciplineBonus + $luckModifier;
-        $chance = $this->clamp($chance, 0.1, 5);
-        
-        return rand(1, 1000) <= ($chance * 10);
-    }
-
-    protected function counterAttack(int $fieldPosition, int $currentTeam, array $defendingStats): array
-    {
-        $counterPower = ($defendingStats['pace'] * StatsWeights::COUNTER_PACE_WEIGHT)
-                      + ($defendingStats['attack'] * StatsWeights::COUNTER_ATTACK_WEIGHT)
-                      + ($defendingStats['creative'] * StatsWeights::COUNTER_CREATIVE_WEIGHT);
-        
-        $counterDistance = (int)($counterPower / SimulationConstants::COUNTER_DISTANCE_DIVISOR);
-        $counterDistance = $this->clamp($counterDistance, SimulationConstants::COUNTER_DISTANCE_MIN, SimulationConstants::COUNTER_DISTANCE_MAX);
+        $counterDistance = $this->calculateCounterDistance($defendingStats, $modifiers);
 
         $newTeam = $currentTeam == 1 ? 2 : 1;
         $newPosition = $newTeam == 1 

@@ -3,7 +3,6 @@
 namespace App\Services\Simulation\EventHandlers;
 
 use App\Constants\SimulationConstants;
-use App\Constants\StatsWeights;
 use App\Services\Simulation\BaseSimulationService;
 use App\Services\Simulation\MetaModifiers;
 
@@ -18,27 +17,27 @@ class CounterAttackHandler extends BaseSimulationService
     ): ?array {
         $modifiers = array_merge(MetaModifiers::defaults(), $modifiers);
 
+        // Counter eligibility: steal must be in opponent's half
+        $inOpponentHalf = $currentTeam == 1 ? $fieldPosition >= 5 : $fieldPosition <= 5;
+
+        if (!$inOpponentHalf) {
+            return null;
+        }
+
         $counterChance = (
-            ($defendingStats['control']
-            + $defendingStats['pace'] * 0.5
-            + $defendingStats['discipline'] * 0.2)
-            / 300
+            ($defendingStats['pace'] * 1.0
+            + $defendingStats['control'] * 0.3
+            + $defendingStats['stamina'] * 0.2)
+            / 400
         ) * 100 * $modifiers['counter_chance'];
+
+        $counterChance += $this->specialEventChance($defendingStats['luck'] ?? 50) * 0.03;
 
         if (rand(1, 100) > $counterChance) {
             return null;
         }
 
-        $counterPower = ($defendingStats['pace'] * StatsWeights::COUNTER_PACE_WEIGHT)
-                      + ($defendingStats['attack'] * StatsWeights::COUNTER_ATTACK_WEIGHT)
-                      + ($defendingStats['creative'] * StatsWeights::COUNTER_CREATIVE_WEIGHT);
-
-        $counterDistance = (int) (($counterPower / SimulationConstants::COUNTER_DISTANCE_DIVISOR) * $modifiers['counter_distance']);
-        $counterDistance = $this->clamp(
-            $counterDistance,
-            SimulationConstants::COUNTER_DISTANCE_MIN,
-            SimulationConstants::COUNTER_DISTANCE_MAX
-        );
+        $counterDistance = $this->calculateCounterDistance($defendingStats, $modifiers);
 
         $newTeam = $currentTeam == 1 ? 2 : 1;
         $newPosition = $newTeam == 1
